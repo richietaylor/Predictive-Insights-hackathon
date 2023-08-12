@@ -3,7 +3,7 @@ from catboost import CatBoostClassifier, Pool
 from sklearn.model_selection import train_test_split
 
 # Load the training data
-train_data = pd.read_csv('/path/to/Train.csv')
+train_data = pd.read_csv('Train.csv')
 
 # Handling Missing Values for Numerical Columns
 train_data.fillna(train_data.mean(numeric_only=True), inplace=True)
@@ -13,6 +13,13 @@ cat_columns = train_data.select_dtypes(include=['object']).columns.tolist()
 cat_columns.remove('Person_id')
 cat_columns.remove('Survey_date')
 
+
+# Fill missing values in categorical columns with a placeholder string
+for column in cat_columns:
+    train_data[column].fillna("missing", inplace=True)
+
+
+# Rest of the preprocessing and training code remains the same
 # Separating the dependent and independent variables
 X_train = train_data.drop(columns=['Person_id', 'Survey_date', 'Target'])
 y_train = train_data['Target']
@@ -35,11 +42,16 @@ catboost_model = CatBoostClassifier(iterations=1000,
 catboost_model.fit(train_pool, eval_set=val_pool)
 
 # Load the test data
-test_data = pd.read_csv('/path/to/Test.csv')
+test_data = pd.read_csv('Test.csv')
 
 # Preprocessing the test data (similar to the training data)
 test_data.fillna(train_data.mean(numeric_only=True), inplace=True)
 
+# Fill missing values in categorical columns with a placeholder string in the test data
+for column in cat_columns:
+    test_data[column].fillna("missing", inplace=True)
+
+# Rest of the test data preprocessing and prediction code remains the same
 # Removing unnecessary columns from the test data
 test_data_processed = test_data.drop(columns=['Person_id', 'Survey_date'])
 
@@ -53,7 +65,7 @@ predictions_prob_df = pd.DataFrame({
 })
 
 # Path to save the CSV file
-predictions_csv_path = '/path/to/predictions.csv'
+predictions_csv_path = 'predictions.csv'
 
 # Saving the DataFrame to a CSV file
 predictions_prob_df.to_csv(predictions_csv_path, index=False)
