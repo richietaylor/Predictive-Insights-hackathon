@@ -4,7 +4,7 @@ import xgboost as xgb
 import statsmodels.api as sm
 
 # Load the training data
-train_data = pd.read_csv('Train.csv')
+train_data = pd.read_csv('Train1.csv')
 
 # Handling Missing Values for Numerical Columns
 train_data.fillna(train_data.mean(numeric_only=True), inplace=True)
@@ -12,17 +12,17 @@ train_data.fillna(train_data.mean(numeric_only=True), inplace=True)
 # Encoding Categorical Variables
 label_encoders = {}
 for column in train_data.select_dtypes(include=['object']).columns:
-    if column not in ['Person_id', 'Survey_date']:
+    if column not in ['person_id', 'survey_date']:
         le = LabelEncoder()
         train_data[column] = le.fit_transform(train_data[column])
         label_encoders[column] = le
 
 # Removing unnecessary columns
-train_data.drop(columns=['Person_id', 'Survey_date'], inplace=True)
+train_data.drop(columns=['person_id', 'survey_date'], inplace=True)
 
 # Separating the dependent and independent variables
-X_train = train_data.drop(columns=['Target'])
-y_train = train_data['Target']
+X_train = train_data.drop(columns=['target'])
+y_train = train_data['target']
 
 # Adding a constant to the independent variables (intercept term)
 X_train_const = sm.add_constant(X_train)
@@ -34,7 +34,7 @@ xgboost_model = xgb.XGBClassifier(random_state=42, use_label_encoder=False)
 xgboost_model.fit(X_train_const, y_train)
 
 # Load the test data
-test_data = pd.read_csv('Test.csv')
+test_data = pd.read_csv('Test1.csv')
 
 # Handling Missing Values for Numerical Columns in the test data
 test_data.fillna(train_data.mean(numeric_only=True), inplace=True)
@@ -46,7 +46,7 @@ for column, le in label_encoders.items():
     test_data[column] = test_data[column].apply(lambda x: le.transform([x])[0] if x in le.classes_ else -1)
 
 # Removing unnecessary columns from the test data
-test_data_processed = test_data.drop(columns=['Person_id', 'Survey_date'])
+test_data_processed = test_data.drop(columns=['person_id', 'survey_date'])
 
 # Adding a constant to the test independent variables (intercept term)
 X_test_const = sm.add_constant(test_data_processed)
@@ -54,9 +54,9 @@ X_test_const = sm.add_constant(test_data_processed)
 # Making predictions on the test data (predicting probabilities for the positive class)
 y_test_prob_pred_xgb = xgboost_model.predict_proba(X_test_const)[:, 1]
 
-# Creating a DataFrame with "Person_id" and the predicted probability of unemployment
+# Creating a DataFrame with "person_id" and the predicted probability of unemployment
 predictions_prob_df = pd.DataFrame({
-    'Person_id': test_data['Person_id'],
+    'person_id': test_data['person_id'],
     'Probability_Unemployed': y_test_prob_pred_xgb
 })
 
