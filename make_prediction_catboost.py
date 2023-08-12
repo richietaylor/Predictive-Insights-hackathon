@@ -33,8 +33,8 @@ val_pool = Pool(data=X_val_split, label=y_val_split, cat_features=cat_columns)
 
 # Creating the CatBoost model
 catboost_model = CatBoostClassifier(iterations=2000,
-                                    learning_rate=0.05,
-                                    depth=4,
+                                    learning_rate=0.17,
+                                    depth=5,
                                     cat_features=cat_columns,
                                     verbose=200)
 
