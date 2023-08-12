@@ -1,0 +1,361 @@
+---
+title: "Predictive Insights Competition - Zindi Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+
+
+# Introduction
+
+This is a step by step approach to the Predictive Insights competition.
+
+Youth unemployment and under-employment is a major concern for any developing country, and serves as an important predictor of economic health and prosperity. Being able to predict, and understand,  which young people will find employment and which ones will require additional help,  helps promote evidence-based decision-making, supports economic empowerment, and allows young people to thrive in their chosen careers. 
+
+The objective of this challenge is to build a machine learning model that predicts youth employment, based on data from labour market surveys in South Africa. 
+
+This solution will help organisations like Predictive Insights achieve a baseline prediction of young peoples’ employment outcomes, allowing them to design and test interventions to help youth make a transition into the labour market or to improve their earnings.  
+
+# The Data
+
+The data for this challenge comes from four rounds of a survey of youth in the South African labour market, conducted at 6-month intervals. The survey contains numerical, categorical and free-form text responses. You will also receive additional demographic information such as age and information about school level and results.
+
+Each person in the dataset was surveyed one year prior (the ‘baseline’ data) to the follow-up survey. We are interested in predicting whether a person is employed at the follow-up survey based on their labour market status and other characteristics during the baseline.
+
+The training set consists of one row or observation per individual - information collected at baseline plus only the Target outcome (whether they were employed or not) one year later. The test set consists of the data collected at baseline without the Target outcome.
+
+The objective of this challenge is to predict whether a young person will be employed, one year after the baseline survey, based on their demographic characteristics, previous and current labour market experience and education outcomes, and to deliver an easy-to-understand and insightful solution to the data team at Predictive Insights. 
+
+# Exploratory Data Analysis
+
+## Load libraries
+
+```{r message=FALSE, warning=FALSE}
+
+library(tidyverse)
+library(lubridate)
+library(fastDummies)
+library(caret)
+library(here)
+```
+
+## Load data
+
+```{r}
+
+df_train <- read.csv(here::here("data/zindi/Train.csv"))
+df_test <- read.csv(here::here("data/zindi/Test.csv"))
+
+head(df_train)
+```
+
+## Univariate Analysis
+
+Let's have a look at some of the variables.
+
+**sa_citizen**
+```{r}
+
+table(df_train$Sa_citizen)
+```
+The values where `sa_citizen` are 0 are very underrepresented. It could be a good idea to remove the rows where `sa_citizen` = 0 but that could lead to a loss of data. Alternatively, one could consider removing the column altogether.
+
+**Geography**
+```{r}
+
+table(df_train$Geography)
+```
+From this, we see that candidates come from three geographical categories: Rural, Suburb, and Urban. The majority come from urban areas.
+
+**Tenure**
+```{r}
+# Generate a histogram of the Tenure variable using the hist() function
+hist(df_train$Tenure, main = "Histogram of Tenure", xlab = "Tenure", ylab = "Frequency")
+```
+This histogram indicates that `Tenure` has a skewed distribution, with a concentration of values towards the lower end and the presence of outliers.
+
+Next, we will look at the distribution of the `Birthyear` variable.
+
+**Birthyear**
+```{r}
+# Generate a boxplot of the Birthyear variable using the boxplot() function
+boxplot(df_train$Birthyear, main = "Boxplot of Birth Year", xlab = "Birth Year")
+```
+The presence of many points below the first quartile suggests a left-skewed skewed distribution, with many outliers on the lower end.
+To get more details, we can use the `summary()` function.
+
+```{r}
+#  get the key statistics of `Birthyear` using summary()
+summary(df_train$Birthyear)
+```
+From this, we see that most candidates were born between 1995 and 2000.
+
+## Bivariate Analysis
+
+Now, let us look at the relationships between a few variables and the Target variables.
+
+```{r}
+# Generate a density plot for the 'Birthyear' variable by 'Target' category
+df_train %>% 
+  ggplot(aes(x = Birthyear, fill = factor(Target))) +
+  geom_density(alpha = 0.5) +
+  labs(x = "Birth Year", y = "Count") +
+  ggtitle("Histogram of Birth Year by Target")
+
+```
+The ages of candidates with a positive outcome and those with a negative outcome seem to follow a similar distribution.
+
+We will now look at the Percentage of candidates with a positive outcome in each Province.
+
+```{r}
+
+# Calculate the Percentage of positive income for each Province
+# Generate a bar plot for the 'Percentage' of positive income for each Province
+df_train %>%
+  group_by(Province) %>%
+  summarize(Percentage = mean(Target) * 100) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = reorder(Province, -Percentage), y = Percentage)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = paste0(round(Percentage, 1), "%")), vjust = -0.5) +  # Add this line for the label
+  labs(x = "Province", y = "Percentage of Positive Income") +
+  ggtitle("Percentage of Positive Income by Province") + 
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+In the training data, candidates from the Western Cape are the most likely to get a positive outcome, while those from the North West Province are least likely.
+
+What about the `Geography` variable?
+
+```{r}
+# Calculate the Percentage of positive income for each `Geography`
+# Generate a bar plot for the 'Percentage' positive income for each `Geography`
+df_train %>%
+  group_by(Geography) %>%
+  summarize(Percentage = mean(Target) * 100) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = reorder(Geography, -Percentage), y = Percentage)) +
+  geom_bar(stat = "identity") +
+    geom_text(aes(label = paste0(round(Percentage, 1), "%")), vjust = -0.5) +  # Add this line for the label
+  labs(x = "Geography", y = "Percentage of Positive Income") +
+  ggtitle("Percentage of Positive Income by Geography") +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+We see that people from "Urban" areas are most likely to get a positive outcome.
+
+In terms if gender, we see below that males in the data set are more likely to get a job after one year.
+
+```{r}
+# Calculate the Percentage of positive income for each gender
+# Create the plot using ggplot2
+df_train %>%
+  group_by(Female) %>%
+  summarize(Percentage = mean(Target) * 100) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = reorder(Female, -Percentage), y = Percentage)) +
+  geom_bar(stat = "identity") +
+    geom_text(aes(label = paste0(round(Percentage, 1), "%")), vjust = -0.5) +  # Add this line for the label
+  labs(x = "Female", y = "Percentage of Positive Income") +
+  ggtitle("Percentage of Positive Income by gender")
+```  
+  
+# Feature Engineering
+
+Feature engineering is the process of transforming raw data into meaningful features that may improve the performance of machine learning models. It involves selecting, creating, and transforming variables to capture relevant information and enhance the predictive power of the model.
+
+Let's extract the year of the survey then use it to calculate the age of each participant at the time of the survey.
+
+```{r}
+
+# Use mutate() to create "year_survey" column, computed by extracting the year from the "survey_date" column %>% 
+# Use mutate() to create "age_survey" column, representing age at time of survey by subtracting  "Birthyear" from "year_survey"
+df_train <- df_train %>%
+  mutate(Year_survey = year(Survey_date)) %>% 
+  mutate(Age_survey = Year_survey - Birthyear)
+
+```
+Next, we create a variable that indicates the number of subjects where the participants have obtained 70% or more.
+
+```{r}
+# Create a new column and count occurrences of "70 - 79 %" or "80 - 100 %" in each row
+df_train$Subjects_over_70 <- rowSums(sapply(df_train, function(x) grepl("80 - 100 %|70 - 79 %", x)))
+
+table(df_train$Subjects_over_70)
+```
+
+Feel free to explore these newly created variables and decide whether you'd like to discard them.
+
+## Dummy variables
+
+In this section, we convert our categorical variables into dummy variables.
+
+```{r}
+# Identify character variables in the dataframe
+char_vars <- sapply(df_train, is.character)
+
+# Convert character variables to dummy variables
+df_train[char_vars] <- lapply(df_train[char_vars], as.factor)
+
+
+df_train_dummy <- df_train %>% 
+  select(-c("Person_id", "Survey_date")) %>% 
+  dummy_cols(., select_columns = c("Round", "Status", "Geography", "Province",
+                                              "Schoolquintile", "Math", "Mathlit", "Additional_lang", "Home_lang", "Science"),
+           remove_first_dummy = TRUE,
+           remove_selected_columns = TRUE)
+
+# View `df_train_dummy`'s  column names 
+colnames(df_train_dummy)
+```
+
+# Data cleaning
+
+## Cleaning column names
+
+The dummification process created some messy column names. Here, we're trying to clean those.
+
+```{r}
+
+# Replace spaces with underscores
+# Remove special characters
+# Replace consecutive underscores with a single underscore
+# Remove trailing underscores at the end
+colnames(df_train_dummy) <- gsub(" ", "_", colnames(df_train_dummy))  
+# colnames(df_train_dummy) <- gsub("[^\\w\\s]", "", colnames(df_train_dummy)) 
+colnames(df_train_dummy) <- gsub("-|%", "", colnames(df_train_dummy))  
+colnames(df_train_dummy) <- gsub("_+", "_", colnames(df_train_dummy))  
+colnames(df_train_dummy) <- gsub("_$", "", colnames(df_train_dummy))  
+
+```
+
+## Dealing with missing values
+
+We will use a simplified method for replacing missing values: replacing them with zero.
+
+```{r}
+
+df_train_dummy[is.na(df_train_dummy)] <- 0
+
+```
+
+# Logistic Regression Modeling
+
+Logistic Regression is a statistical modeling technique used to predict binary outcomes or probabilities. It is commonly used when the dependent variable (Target variable) is categorical and has two possible outcomes, such as yes/no, success/failure, or 0/1.
+
+To perform logistic regression with 10-fold cross-validation, you can use the following code:
+
+```{r warning=FALSE}
+
+df_train_dummy$Target <- as.factor(df_train_dummy$Target)
+
+# caret::train() requires  valid R variable names as values of the Target variable
+df_train_dummy$Target <- paste0("outcome_", df_train_dummy$Target)
+
+# Set seed for random number generation to ensure repeatability
+set.seed(42)
+
+# Set up the control parameters for cross-validation
+ctrl <- trainControl(method = "cv", number = 10, classProbs = TRUE, summaryFunction = twoClassSummary)
+
+# Run logistic regression with cross-validation
+model <- train(Target ~ ., data = df_train_dummy, method = "glm", family = "binomial", trControl = ctrl, metric = "ROC")
+
+```
+
+The evaluation metric for this competition is Area Under the curve.
+
+```{r warning=FALSE}
+
+# Obtain the cross-validated recall
+cv_roc <- model$results$ROC
+
+print(paste0("ROC: ", cv_roc))
+```
+# Predict on the test set
+
+```{r}
+# Test set preview
+head(df_test)
+
+```
+
+## Pre-processing
+
+We need to make sure the test data undergoes the same pre-processing steps as the training data did.
+
+```{r}
+
+# Create "year_survey" column %>% 
+# Create "age_survey" column
+df_test <- df_test %>%
+  mutate(Year_survey = year(Survey_date)) %>% 
+  mutate(Age_survey = Year_survey - Birthyear)
+
+# Create a new column and count occurrences of "70 - 79 %" or "80 - 100 %" in each row
+df_test$Subjects_over_70 <- rowSums(sapply(df_test, function(x) grepl("80 - 100 %|70 - 79 %", x)))
+
+table(df_test$Subjects_over_70)
+```
+
+```{r}
+# Identify character variables in the dataframe
+char_vars <- sapply(df_test, is.character)
+
+# Convert character variables to dummy variables
+df_test[char_vars] <- lapply(df_test[char_vars], as.factor)
+
+
+df_test_dummy <- df_test %>% 
+  select(-c("Person_id", "Survey_date")) %>% 
+  dummy_cols(., select_columns =  c("Round", "Status", "Geography", "Province",
+                                              "Schoolquintile", "Math", "Mathlit", "Additional_lang", "Home_lang", "Science"),
+           remove_first_dummy = TRUE,
+           remove_selected_columns = TRUE)
+
+head(df_test_dummy)
+```
+
+```{r}
+
+# Replace spaces with underscores
+# Remove special characters
+# Replace consecutive underscores with a single underscore
+# Remove trailing underscores at the end
+colnames(df_test_dummy) <- gsub(" ", "_", colnames(df_test_dummy))  
+colnames(df_test_dummy) <- gsub("-|%", "", colnames(df_test_dummy))  
+colnames(df_test_dummy) <- gsub("_+", "_", colnames(df_test_dummy))  
+colnames(df_test_dummy) <- gsub("_$", "", colnames(df_test_dummy))  
+
+# Dealing with misising values
+df_test_dummy[is.na(df_test_dummy)] <- 0
+head(df_test_dummy)
+
+```
+Now, let's predict!
+
+```{r warning=FALSE}
+predictions <- predict(model, df_test_dummy)
+head(predictions)
+```
+Now let's put our predictions in the format needed for submission.For every row in the dataset, submission files should contain 2 columns: ID and Target.
+Your submission file should look like this.
+
+```{r}
+  predictions <- gsub("outcome_", "", predictions)
+  df_submission <-
+    data.frame("ID" = df_test$Person_id, "Target" = as.numeric(predictions))
+  head(df_submission)
+```
+
+Save your submission as a CSV file.
+
+```{r}
+  df_submission %>% 
+  write.csv(here::here("data/submission.csv"), row.names = FALSE)
+```
+
+Et voilà! You are now ready to submit.
+
+Predictive Insights is a leader in behavioural science and artificial intelligence to improve business efficiency and profitability. Through a combination of data science, machine learning and behavioural insights, we help customers to accurately predict sales, staffing and stock levels. Our solution improves sales forecasting on average by 50 percent. We operate in Africa as well as Europe, Middle East and India in the restaurant, food processing, retail and financial service sectors.
+We are part of Alphawave, a specialised technology investment group supporting businesses seeking to do things that are complex to replicate.
+
+
