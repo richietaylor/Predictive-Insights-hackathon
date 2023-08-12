@@ -32,7 +32,7 @@ train_pool = Pool(data=X_train_split, label=y_train_split, cat_features=cat_colu
 val_pool = Pool(data=X_val_split, label=y_val_split, cat_features=cat_columns)
 
 # Creating the CatBoost model
-catboost_model = CatBoostClassifier(iterations=3000,
+catboost_model = CatBoostClassifier(iterations=2000,
                                     learning_rate=0.05,
                                     depth=4,
                                     cat_features=cat_columns,
@@ -65,7 +65,7 @@ predictions_prob_df = pd.DataFrame({
 })
 
 # Path to save the CSV file
-predictions_csv_path = 'predictions.csv'
+predictions_csv_path = 'predictions3.csv'
 
 # Saving the DataFrame to a CSV file
 predictions_prob_df.to_csv(predictions_csv_path, index=False)
