@@ -5,7 +5,7 @@ import statsmodels.api as sm
 df = pd.read_csv('train.csv')
 
 # Define the independent variables
-independent_vars = ['independent_var1', 'independent_var2', ..., 'independent_var15']
+independent_vars = ['Tenure', 'Geography', 'Province', 'Matric', 'Degree', '']
 
 # Add a constant term to the independent variables matrix
 X = sm.add_constant(df[independent_vars])
