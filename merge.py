@@ -10,9 +10,9 @@ predictions_files = [
 
 # List of weights for each CSV file (should be the same length as predictions_files)
 weights = [
-    2.0, # Weight for predictions1.csv
-    2.0, # Weight for predictions2.csv
-    1.0, # Weight for predictions3.csv
+    1.0, # Weight for predictions1.csv
+    1.0, # Weight for predictions2.csv
+    1.5, # Weight for predictions3.csv
     # Add more weights here as needed
 ]
 
