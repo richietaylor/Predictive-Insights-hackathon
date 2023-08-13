@@ -18,7 +18,7 @@ for column in train_data.select_dtypes(include=['object']).columns:
         label_encoders[column] = le
 
 # Removing unnecessary columns
-train_data.drop(columns=['Person_id', 'Survey_date'], inplace=True)
+train_data.drop(columns=['Person_id', 'Survey_date','round','year'], inplace=True)
 
 # Separating the dependent and independent variables
 X_train = train_data.drop(columns=['Target'])
@@ -46,7 +46,7 @@ for column, le in label_encoders.items():
     test_data[column] = test_data[column].apply(lambda x: le.transform([x])[0] if x in le.classes_ else -1)
 
 # Removing unnecessary columns from the test data
-test_data_processed = test_data.drop(columns=['Person_id', 'Survey_date'])
+test_data_processed = test_data.drop(columns=['Person_id', 'Survey_date','round','year'])
 
 # Adding a constant to the test independent variables (intercept term)
 X_test_const = sm.add_constant(test_data_processed)
