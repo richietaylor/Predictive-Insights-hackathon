@@ -1,5 +1,5 @@
 import pandas as pd
-from catboost import CatBoostClassifier, Pool
+from catboost import CatBoostClassifier, Pool, cv
 from sklearn.model_selection import train_test_split
 
 # Load the training data
@@ -13,16 +13,30 @@ cat_columns = train_data.select_dtypes(include=['object']).columns.tolist()
 cat_columns.remove('Person_id')
 cat_columns.remove('Survey_date')
 
-
 # Fill missing values in categorical columns with a placeholder string
 for column in cat_columns:
     train_data[column].fillna("missing", inplace=True)
 
-
-# Rest of the preprocessing and training code remains the same
 # Separating the dependent and independent variables
 X_train = train_data.drop(columns=['Person_id', 'Survey_date', 'Target'])
 y_train = train_data['Target']
+
+# Creating Pool object for entire training data
+train_pool = Pool(data=X_train, label=y_train, cat_features=cat_columns)
+
+# Cross-validation parameters
+cv_params = {
+    'iterations': 1000,
+    'learning_rate': 0.02,
+    'depth': 5,
+    'loss_function': 'Logloss',
+    'verbose': 200
+}
+
+# Performing 5-fold cross-validation
+cv_results = cv(pool=train_pool, params=cv_params, fold_count=5)
+print('5-Fold Cross-Validation Results:')
+print(cv_results)
 
 # Splitting the dataset into training and validation sets
 X_train_split, X_val_split, y_train_split, y_val_split = train_test_split(X_train, y_train, test_size=0.2, random_state=42)
@@ -32,7 +46,7 @@ train_pool = Pool(data=X_train_split, label=y_train_split, cat_features=cat_colu
 val_pool = Pool(data=X_val_split, label=y_val_split, cat_features=cat_columns)
 
 # Creating the CatBoost model
-catboost_model = CatBoostClassifier(iterations=3000,
+catboost_model = CatBoostClassifier(iterations=1000,
                                     learning_rate=0.02,
                                     depth=5,
                                     cat_features=cat_columns,
@@ -51,7 +65,6 @@ test_data.fillna(train_data.mean(numeric_only=True), inplace=True)
 for column in cat_columns:
     test_data[column].fillna("missing", inplace=True)
 
-# Rest of the test data preprocessing and prediction code remains the same
 # Removing unnecessary columns from the test data
 test_data_processed = test_data.drop(columns=['Person_id', 'Survey_date'])
 

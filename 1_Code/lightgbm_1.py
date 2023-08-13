@@ -1,6 +1,8 @@
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 import lightgbm as lgb
+from sklearn.model_selection import cross_val_score
+from sklearn.metrics import accuracy_score
 
 # Load the training data
 train_data = pd.read_csv('Train.csv')
@@ -26,8 +28,18 @@ y_train = train_data['Target']
 # Creating the LightGBM model
 lightgbm_model = lgb.LGBMClassifier(random_state=42)
 
+# Performing 5-fold cross-validation
+cross_val_scores = cross_val_score(lightgbm_model, X_train, y_train, cv=5)
+print(f'5-Fold Cross-Validation Scores: {cross_val_scores}')
+print(f'Mean Cross-Validation Score: {cross_val_scores.mean()}')
+
 # Fitting the LightGBM model to the training data
 lightgbm_model.fit(X_train, y_train)
+
+# # Making predictions on the training data to assess performance
+# y_train_pred = lightgbm_model.predict(X_train)
+# train_accuracy = accuracy_score(y_train, y_train_pred)
+# print(f'Training Accuracy: {train_accuracy}')
 
 # Load the test data
 test_data = pd.read_csv('Test.csv')

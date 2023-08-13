@@ -2,12 +2,13 @@ import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 import xgboost as xgb
 import statsmodels.api as sm
+from sklearn.model_selection import cross_val_score
 
 # Load the training data
 train_data = pd.read_csv('Train.csv')
 
 # Handling Missing Values for Numerical Columns
-train_data.fillna(train_data.mean(numeric_only=True), inplace=True)
+train_data.fillna(train_data.min(numeric_only=True), inplace=True)
 
 # Encoding Categorical Variables
 label_encoders = {}
@@ -18,7 +19,7 @@ for column in train_data.select_dtypes(include=['object']).columns:
         label_encoders[column] = le
 
 # Removing unnecessary columns
-train_data.drop(columns=['Person_id', 'Survey_date','round','year'], inplace=True)
+train_data.drop(columns=['Person_id', 'Survey_date'], inplace=True)
 
 # Separating the dependent and independent variables
 X_train = train_data.drop(columns=['Target'])
@@ -28,7 +29,12 @@ y_train = train_data['Target']
 X_train_const = sm.add_constant(X_train)
 
 # Creating the XGBoost model
-xgboost_model = xgb.XGBClassifier(random_state=42, use_label_encoder=False)
+xgboost_model = xgb.XGBClassifier(random_state=42)
+
+# Performing 5-fold cross-validation
+cross_val_scores = cross_val_score(xgboost_model, X_train_const, y_train, cv=5)
+print(f'5-Fold Cross-Validation Scores: {cross_val_scores}')
+print(f'Mean Cross-Validation Score: {cross_val_scores.mean()}')
 
 # Fitting the XGBoost model to the training data
 xgboost_model.fit(X_train_const, y_train)
@@ -37,7 +43,7 @@ xgboost_model.fit(X_train_const, y_train)
 test_data = pd.read_csv('Test.csv')
 
 # Handling Missing Values for Numerical Columns in the test data
-test_data.fillna(train_data.mean(numeric_only=True), inplace=True)
+test_data.fillna(train_data.min(numeric_only=True), inplace=True)
 
 # Handling Missing Values for Categorical Columns and Encoding in the test data
 for column, le in label_encoders.items():
@@ -46,7 +52,7 @@ for column, le in label_encoders.items():
     test_data[column] = test_data[column].apply(lambda x: le.transform([x])[0] if x in le.classes_ else -1)
 
 # Removing unnecessary columns from the test data
-test_data_processed = test_data.drop(columns=['Person_id', 'Survey_date','round','year'])
+test_data_processed = test_data.drop(columns=['Person_id', 'Survey_date'])
 
 # Adding a constant to the test independent variables (intercept term)
 X_test_const = sm.add_constant(test_data_processed)

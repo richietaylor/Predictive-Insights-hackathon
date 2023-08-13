@@ -15,11 +15,11 @@ for column in train_data.select_dtypes(include=['object']).columns:
         train_data[column] = le.fit_transform(train_data[column])
         label_encoders[column] = le
 
-train_data.drop(columns=['Person_id', 'Survey_date','round'], inplace=True)
+train_data.drop(columns=['Person_id', 'Survey_date'], inplace=True)
 X_train = train_data.drop(columns=['Target'])
 y_train = train_data['Target']
 X_train_const = sm.add_constant(X_train)
-xgboost_model = xgb.XGBClassifier(random_state=42, use_label_encoder=False)
+xgboost_model = xgb.XGBClassifier(random_state=42)
 xgboost_model.fit(X_train_const, y_train)
 
 test_data = pd.read_csv("Test.csv")
@@ -30,7 +30,7 @@ for column, le in label_encoders.items():
     test_data[column].fillna(mode_value, inplace=True)
     test_data[column] = test_data[column].apply(lambda x: le.transform([x])[0] if x in le.classes_ else -1)
 
-test_data_processed = test_data.drop(columns=['Person_id', 'Survey_date','round'])
+test_data_processed = test_data.drop(columns=['Person_id', 'Survey_date'])
 X_test_const = sm.add_constant(test_data_processed)
 
 feature_importances = xgboost_model.feature_importances_
