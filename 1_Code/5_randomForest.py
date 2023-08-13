@@ -14,10 +14,14 @@ numerical_columns = train_data.select_dtypes(include=['int64', 'float64']).colum
 categorical_columns = train_data.select_dtypes(include=['object']).columns.tolist()
 numerical_columns.remove('Target')
 categorical_columns.remove('Person_id')
+
+# For numerical columns, fill missing values with the minimum
 for col in numerical_columns:
-    median_value = train_data[col].median()
-    train_data[col].fillna(median_value, inplace=True)
-    test_data[col].fillna(median_value, inplace=True)
+    min_value = train_data[col].min()
+    train_data[col].fillna(min_value, inplace=True)
+    test_data[col].fillna(min_value, inplace=True)
+
+# For categorical columns, fill missing values with the mode
 for col in categorical_columns:
     mode_value = train_data[col].mode()[0]
     train_data[col].fillna(mode_value, inplace=True)
@@ -58,10 +62,14 @@ auc_roc_val = roc_auc_score(y_val, y_val_prob)
 
 # Predicting on Test Data
 test_probabilities = random_forest_model.predict_proba(test_data[common_features])[:, 1]
+
+test_probabilities_unemployed = 1 - test_probabilities
 predictions_df = pd.DataFrame({
     'Person_id': test_data['Person_id'],
-    'Probability_of_Being_Employed': test_probabilities
+    'Probability_Unemployed': test_probabilities_unemployed  # Using the correct column name
 })
+
+
 
 # Saving Predictions to CSV
 predictions_file_path = 'predictions5.csv'
