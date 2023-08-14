@@ -2,6 +2,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.optim.lr_scheduler
 from sklearn.preprocessing import OrdinalEncoder, StandardScaler, LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score
@@ -11,9 +12,9 @@ import numpy as np
 # Hyperparameters
 batch_size = 128
 epochs = 100
-learning_rate = 0.0003
-hidden_layers = [64, 64]  # Number of units in hidden layers
-dropout_rate = 0.2
+learning_rate = 0.0001
+hidden_layers = [512,512]  # Number of units in hidden layers
+dropout_rate = 0.01
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def preprocess_data(file_path):
@@ -36,7 +37,7 @@ def split_and_scale(data, target_column):
     X_train, X_val, y_train, y_val = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
     return X_train, X_val, y_train, y_val, scaler
 
-def add_noise(data, noise_level=0.01):
+def add_noise(data, noise_level=0.1):
     noise = np.random.normal(scale=noise_level, size=data.shape)
     return data + noise
 
@@ -44,13 +45,13 @@ class NeuralNetwork(nn.Module):
     def __init__(self, input_size, hidden_layers, dropout_rate):
         super(NeuralNetwork, self).__init__()
         layers = [nn.Linear(input_size, hidden_layers[0]),
-                  nn.BatchNorm1d(hidden_layers[0]),
                   nn.ReLU(),
+                  nn.BatchNorm1d(hidden_layers[0]),
                   nn.Dropout(dropout_rate)]
         for i in range(len(hidden_layers) - 1):
             layers += [nn.Linear(hidden_layers[i], hidden_layers[i + 1]),
-                       nn.BatchNorm1d(hidden_layers[i + 1]),
                        nn.ReLU(),
+                       nn.BatchNorm1d(hidden_layers[i + 1]),
                        nn.Dropout(dropout_rate)]
         layers += [nn.Linear(hidden_layers[-1], 1), nn.Sigmoid()]
         self.fc = nn.Sequential(*layers)
@@ -72,9 +73,9 @@ def calculate_metrics(outputs, labels):
 def train_model(train_loader, val_loader, input_size):
     model = NeuralNetwork(input_size, hidden_layers, dropout_rate)
     model.to(device)
-    loss_fn = nn.BCELoss()
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0.01)
-
+    loss_fn = nn.BCEWithLogitsLoss()
+    optimizer = optim.SGD(model.parameters(), lr=learning_rate,momentum=0.4,dampening=0.2)
+    scheduler = torch.optim.lr_scheduler.StepLR(gamma=1,step_size=5,optimizer=optimizer)
     # Training the model
     for epoch in range(epochs):
         model.train()
@@ -98,7 +99,7 @@ def train_model(train_loader, val_loader, input_size):
                 train_roc_auc += metrics[4]
             optimizer.zero_grad()
             loss.backward()
-            optimizer.step()
+            scheduler.step()
 
         # Calculate averages
         train_loss /= len(train_loader)

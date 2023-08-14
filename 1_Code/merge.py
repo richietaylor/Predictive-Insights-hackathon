@@ -13,11 +13,11 @@ predictions_files = [
 
 # List of weights for each CSV file (should be the same length as predictions_files)
 weights = [
-    2.0, 
-    2.0, 
     1.0, 
+    1.0, 
+    1.0, 
+    0.0,
     1.0,
-    2.0,
     
 ]
 

@@ -1,9 +1,9 @@
 import pandas as pd
 from catboost import CatBoostClassifier, Pool
 from sklearn.model_selection import train_test_split
-
+from sklearn.metrics import roc_auc_score
 # Load the training data
-train_data = pd.read_csv('Train.csv')
+train_data = pd.read_csv('processed_train.csv')
 
 # Handling Missing Values for Numerical Columns
 train_data.fillna(train_data.min(numeric_only=True), inplace=True)
@@ -22,7 +22,7 @@ X_train = train_data.drop(columns=['Person_id', 'Survey_date', 'Target'])
 y_train = train_data['Target']
 
 # Splitting the dataset into training and validation sets
-X_train_split, X_val_split, y_train_split, y_val_split = train_test_split(X_train, y_train, test_size=0.2, random_state=42)
+X_train_split, X_val_split, y_train_split, y_val_split = train_test_split(X_train, y_train, test_size=0.5, random_state=42)
 
 # Creating Pool objects for training and validation
 train_pool = Pool(data=X_train_split, label=y_train_split, cat_features=cat_columns)
@@ -31,15 +31,22 @@ val_pool = Pool(data=X_val_split, label=y_val_split, cat_features=cat_columns)
 # Creating the CatBoost model
 catboost_model = CatBoostClassifier(iterations=2000,
                                     learning_rate=0.02,
-                                    depth=5,
+                                    depth=4,
                                     cat_features=cat_columns,
                                     verbose=200)
 
 # Fitting the CatBoost model to the training data
 catboost_model.fit(train_pool, eval_set=val_pool)
 
+# Predicting probabilities for the validation set (positive class)
+y_val_prob_pred_catboost = catboost_model.predict_proba(X_val_split)[:, 1]
+
+# Calculating the ROC AUC score for the validation set
+roc_auc_val = roc_auc_score(y_val_split, y_val_prob_pred_catboost)
+print(f"ROC AUC Score on Validation Set: {roc_auc_val}")
+
 # Load the test data
-test_data = pd.read_csv('Test.csv')
+test_data = pd.read_csv('processed_test.csv')
 
 # Preprocessing the test data (similar to the training data)
 test_data.fillna(train_data.min(numeric_only=True), inplace=True)

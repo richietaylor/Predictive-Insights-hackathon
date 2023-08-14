@@ -6,8 +6,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import roc_auc_score
 
 # Loading Data
-train_data = pd.read_csv('Train.csv')
-test_data = pd.read_csv('Test.csv')
+train_data = pd.read_csv('processed_train.csv')
+test_data = pd.read_csv('processed_test.csv')
 
 # Handling Missing Values
 numerical_columns = train_data.select_dtypes(include=['int64', 'float64']).columns.tolist()
@@ -27,15 +27,6 @@ for col in categorical_columns:
     train_data[col].fillna(mode_value, inplace=True)
     test_data[col].fillna(mode_value, inplace=True)
 
-# Extracting Date Features
-train_data['Survey_date'] = pd.to_datetime(train_data['Survey_date'])
-test_data['Survey_date'] = pd.to_datetime(test_data['Survey_date'])
-train_data['Survey_year'] = train_data['Survey_date'].dt.year
-train_data['Survey_month'] = train_data['Survey_date'].dt.month
-train_data['Survey_day'] = train_data['Survey_date'].dt.day
-test_data['Survey_year'] = test_data['Survey_date'].dt.year
-test_data['Survey_month'] = test_data['Survey_date'].dt.month
-test_data['Survey_day'] = test_data['Survey_date'].dt.day
 train_data.drop(columns=['Survey_date'], inplace=True)
 test_data.drop(columns=['Survey_date'], inplace=True)
 
@@ -50,7 +41,7 @@ test_data = test_data[['Person_id'] + common_features]
 # Splitting the Training Data
 X = train_data[common_features]
 y = train_data['Target']
-X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.1, random_state=42)
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # Training the Random Forest Model
 random_forest_model = RandomForestClassifier(n_estimators=100, random_state=42)
@@ -63,10 +54,9 @@ auc_roc_val = roc_auc_score(y_val, y_val_prob)
 # Predicting on Test Data
 test_probabilities = random_forest_model.predict_proba(test_data[common_features])[:, 1]
 
-test_probabilities_unemployed = 1 - test_probabilities
 predictions_df = pd.DataFrame({
     'Person_id': test_data['Person_id'],
-    'Probability_Unemployed': test_probabilities_unemployed  # Using the correct column name
+    'Probability_Unemployed': test_probabilities  # Using the correct column name
 })
 
 

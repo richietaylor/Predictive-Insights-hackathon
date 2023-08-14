@@ -5,7 +5,7 @@ import xgboost as xgb
 import statsmodels.api as sm
 
 # Repeating the previous steps
-train_data = pd.read_csv('Train.csv')
+train_data = pd.read_csv('processed_train.csv')
 train_data.fillna(train_data.mean(numeric_only=True), inplace=True)
 
 label_encoders = {}
@@ -22,7 +22,7 @@ X_train_const = sm.add_constant(X_train)
 xgboost_model = xgb.XGBClassifier(random_state=42)
 xgboost_model.fit(X_train_const, y_train)
 
-test_data = pd.read_csv("Test.csv")
+test_data = pd.read_csv("processed_test.csv")
 test_data.fillna(train_data.mean(numeric_only=True), inplace=True)
 
 for column, le in label_encoders.items():

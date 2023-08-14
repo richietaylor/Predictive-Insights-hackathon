@@ -1,4 +1,4 @@
-Person_id,Survey_date,round,status,tenure,geography,province,schoolquintile,additional_lang,home_lang,science,female,sa_citizen,birthyear,birthmonth,mathf,mathlitf,math_achieved,mathlit_achieved,educ,year,age
+Person_id,Survey_date,round,status,tenure,geography,province,schoolquintile,additional_lang,home_lang,science,female,sa_citizen,Birthyear,Birthmonth,mathf,mathlitf,math_achieved,mathlit_achieved,educ,year,age
 Id_r90136smvl,8/3/2022,3,other,,Urban,KwaZulu-Natal,2,50 - 59 %,,40 - 49 %,0,1,2002,12,0,0,0,0,1,2022,20
 Id_wawdqhmu6s,3/16/2023,4,unemployed,979,Urban,Western Cape,,40 - 49 %,,,1,1,1989,12,0,0,0,0,1,2023,34
 Id_ap2czff2bu,3/14/2023,4,unemployed,339,Urban,KwaZulu-Natal,1,,,,1,1,1989,12,0,0,0,0,0,2023,34

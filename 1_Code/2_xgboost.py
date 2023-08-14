@@ -5,7 +5,7 @@ import statsmodels.api as sm
 from sklearn.model_selection import cross_val_score
 
 # Load the training data
-train_data = pd.read_csv('Train.csv')
+train_data = pd.read_csv('processed_train.csv')
 
 # Handling Missing Values for Numerical Columns
 train_data.fillna(train_data.min(numeric_only=True), inplace=True)
@@ -40,7 +40,7 @@ print(f'Mean Cross-Validation Score: {cross_val_scores.mean()}')
 xgboost_model.fit(X_train_const, y_train)
 
 # Load the test data
-test_data = pd.read_csv('Test.csv')
+test_data = pd.read_csv('processed_test.csv')
 
 # Handling Missing Values for Numerical Columns in the test data
 test_data.fillna(train_data.min(numeric_only=True), inplace=True)
