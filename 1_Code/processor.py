@@ -13,6 +13,12 @@ def encode_categorical_columns(data):
         data[column] = encoder.fit_transform(data[column])
     return data
 
+def calculate_exact_age(row):
+    age = row['Survey_year'] - row['Birthyear']
+    # Adjusting the age based on months
+    age += (row['Survey_month'] - row['Birthmonth']) / 12
+    return age
+
 # Function to transform percentage range columns
 def transform_percentage_columns(data):
     percentage_columns = ['Math', 'Mathlit', 'Additional_lang', 'Home_lang', 'Science']
@@ -30,15 +36,19 @@ def process_data(data):
     data['Survey_day'] = data['Survey_date'].dt.day
 
     # Calculate age
-    data['Age'] = data['Survey_year'] - data['Birthyear']
-    data['Age'] = data.apply(lambda row: row['Age'] - 1 if row['Survey_month'] < row['Birthmonth'] else row['Age'], axis=1)
-
+    # data['Age'] = data['Survey_year'] - data['Birthyear']
+    # data['Age'] = data.apply(lambda row: row['Age'] - 1 if row['Survey_month'] < row['Birthmonth'] else row['Age'], axis=1)
+    data['Age'] = data.apply(calculate_exact_age, axis=1)
     # Map "unemployed" status to -1, and all other statuses to 1
     data['Status_mapped'] = data['Status'].apply(lambda x: -1 if x == 'unemployed' else 1)
 
     # Create new feature by multiplying 'Tenure' by 'Status_mapped'
     data['Tenure_Status'] = data['Tenure'] * data['Status_mapped']
 
+    # Dropping Columns Here
+
+    data.drop(columns=['Status_mapped','Birthyear','Birthmonth'],inplace=True)
+    
     # Apply categorical encoding
     data = encode_categorical_columns(data)
 
