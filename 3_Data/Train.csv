@@ -1,4 +1,4 @@
-Person_id,Survey_date,round,status,tenure,geography,province,schoolquintile,additional_lang,home_lang,science,female,sa_citizen,Birthyear,Birthmonth,Target,mathf,mathlitf,math_achieved,mathlit_achieved,educ,year,age
+Person_id,Survey_date,round,status,tenure,geography,province,schoolquintile,additional_lang,home_lang,science,female,sa_citizen,birthyear,birthmonth,Target,mathf,mathlitf,math_achieved,mathlit_achieved,educ,year,age
 Id_eqz61wz7yn,2/23/2022,2,studying,,Rural,Mpumalanga,3,50 - 59 %,,0 - 29 %,1,1,2000,5,0,0,0,0,0,1,2022,22
 Id_kj5k3g5wud,2/6/2023,4,unemployed,427,Suburb,North West,1,40 - 49 %,,30 - 39 %,1,1,1989,4,1,1,0,0,0,1,2023,34
 Id_9h0isj38y4,8/8/2022,3,other,,Urban,Free State,,40 - 49 %,,30 - 39 %,0,1,1996,7,1,1,0,0,0,1,2022,26
