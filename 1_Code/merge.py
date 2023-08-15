@@ -5,20 +5,15 @@ predictions_files = [
     'predictions1.csv',
     'predictions2.csv',
     'predictions3.csv',
-    'predictions4.csv',
-    'predictions5.csv',
-
     # Add more files here as needed
 ]
 
 # List of weights for each CSV file (should be the same length as predictions_files)
 weights = [
-    1.0, 
-    1.0, 
-    1.0, 
-    0.0,
-    1.0,
-    
+    1.0, # Weight for predictions1.csv
+    1.0, # Weight for predictions2.csv
+    1.5, # Weight for predictions3.csv
+    # Add more weights here as needed
 ]
 
 # Read the first file to initialize
