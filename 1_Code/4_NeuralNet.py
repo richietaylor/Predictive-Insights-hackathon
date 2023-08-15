@@ -13,8 +13,8 @@ import numpy as np
 batch_size = 128
 epochs = 100
 learning_rate = 0.0001
-hidden_layers = [512,512]  # Number of units in hidden layers
-dropout_rate = 0.01
+hidden_layers = [1024]  # Number of units in hidden layers
+dropout_rate = 0.5
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def preprocess_data(file_path):
@@ -74,8 +74,8 @@ def train_model(train_loader, val_loader, input_size):
     model = NeuralNetwork(input_size, hidden_layers, dropout_rate)
     model.to(device)
     loss_fn = nn.BCEWithLogitsLoss()
-    optimizer = optim.SGD(model.parameters(), lr=learning_rate,momentum=0.4,dampening=0.2)
-    scheduler = torch.optim.lr_scheduler.StepLR(gamma=1,step_size=5,optimizer=optimizer)
+    optimizer = optim.SGD(model.parameters(), lr=learning_rate,momentum=0.9)
+    # scheduler = torch.optim.lr_scheduler.StepLR(gamma=0.5,step_size=5,optimizer=optimizer)
     # Training the model
     for epoch in range(epochs):
         model.train()
@@ -99,7 +99,8 @@ def train_model(train_loader, val_loader, input_size):
                 train_roc_auc += metrics[4]
             optimizer.zero_grad()
             loss.backward()
-            scheduler.step()
+            # scheduler.step()
+            optimizer.step()
 
         # Calculate averages
         train_loss /= len(train_loader)

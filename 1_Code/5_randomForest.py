@@ -44,7 +44,7 @@ y = train_data['Target']
 X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # Training the Random Forest Model
-random_forest_model = RandomForestClassifier(n_estimators=100, random_state=42)
+random_forest_model = RandomForestClassifier(n_estimators=100, random_state=42,criterion='entropy')
 random_forest_model.fit(X_train, y_train)
 
 # Predicting on Validation Set
