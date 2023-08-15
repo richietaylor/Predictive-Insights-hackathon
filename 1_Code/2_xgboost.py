@@ -1,7 +1,6 @@
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 import xgboost as xgb
-import statsmodels.api as sm
 from sklearn.model_selection import cross_val_score
 
 # Load the training data
@@ -25,19 +24,25 @@ train_data.drop(columns=['Person_id', 'Survey_date'], inplace=True)
 X_train = train_data.drop(columns=['Target'])
 y_train = train_data['Target']
 
-# Adding a constant to the independent variables (intercept term)
-X_train_const = sm.add_constant(X_train)
-
-# Creating the XGBoost model
-xgboost_model = xgb.XGBClassifier(random_state=42)
+# Creating the XGBoost model with parameters
+xgboost_model = xgb.XGBClassifier(
+    objective='count:poisson',
+    n_estimators=300,
+    learning_rate=0.05,
+    max_depth=5,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    gamma=0.1,
+    random_state=42
+)
 
 # Performing 5-fold cross-validation
-cross_val_scores = cross_val_score(xgboost_model, X_train_const, y_train, cv=5)
+cross_val_scores = cross_val_score(xgboost_model, X_train, y_train, cv=5)
 print(f'5-Fold Cross-Validation Scores: {cross_val_scores}')
 print(f'Mean Cross-Validation Score: {cross_val_scores.mean()}')
 
 # Fitting the XGBoost model to the training data
-xgboost_model.fit(X_train_const, y_train)
+xgboost_model.fit(X_train, y_train)
 
 # Load the test data
 test_data = pd.read_csv('processed_test.csv')
@@ -54,11 +59,8 @@ for column, le in label_encoders.items():
 # Removing unnecessary columns from the test data
 test_data_processed = test_data.drop(columns=['Person_id', 'Survey_date'])
 
-# Adding a constant to the test independent variables (intercept term)
-X_test_const = sm.add_constant(test_data_processed)
-
 # Making predictions on the test data (predicting probabilities for the positive class)
-y_test_prob_pred_xgb = xgboost_model.predict_proba(X_test_const)[:, 1]
+y_test_prob_pred_xgb = xgboost_model.predict_proba(test_data_processed)[:, 1]
 
 # Creating a DataFrame with "person_id" and the predicted probability of unemployment
 predictions_prob_df = pd.DataFrame({

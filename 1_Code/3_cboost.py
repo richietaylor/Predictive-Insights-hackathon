@@ -1,7 +1,7 @@
 import pandas as pd
-from catboost import CatBoostClassifier, Pool
+from catboost import CatBoostClassifier, Pool, cv
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import roc_auc_score
+
 # Load the training data
 train_data = pd.read_csv('processed_train.csv')
 
@@ -21,29 +21,25 @@ for column in cat_columns:
 X_train = train_data.drop(columns=['Person_id', 'Survey_date', 'Target'])
 y_train = train_data['Target']
 
-# Splitting the dataset into training and validation sets
-X_train_split, X_val_split, y_train_split, y_val_split = train_test_split(X_train, y_train, test_size=0.5, random_state=42)
-
-# Creating Pool objects for training and validation
-train_pool = Pool(data=X_train_split, label=y_train_split, cat_features=cat_columns)
-val_pool = Pool(data=X_val_split, label=y_val_split, cat_features=cat_columns)
+# Creating Pool object for training
+train_pool = Pool(data=X_train, label=y_train, cat_features=cat_columns)
 
 # Creating the CatBoost model
-catboost_model = CatBoostClassifier(iterations=2000,
-                                    learning_rate=0.02,
-                                    depth=4,
+catboost_model = CatBoostClassifier(iterations=3000,
+                                    learning_rate=0.01,
+                                    depth=5,
                                     cat_features=cat_columns,
-                                    verbose=200)
+                                    verbose=200,loss_function='Logloss',thread_count=6,early_stopping_rounds=3)
 
-# Fitting the CatBoost model to the training data
-catboost_model.fit(train_pool, eval_set=val_pool)
+# Performing cross-validation
+cv_params = catboost_model.get_params()
+cv_results = cv(train_pool, cv_params, fold_count=5, verbose=200)
 
-# Predicting probabilities for the validation set (positive class)
-y_val_prob_pred_catboost = catboost_model.predict_proba(X_val_split)[:, 1]
+print("Cross-validation results:")
+print(cv_results)
 
-# Calculating the ROC AUC score for the validation set
-roc_auc_val = roc_auc_score(y_val_split, y_val_prob_pred_catboost)
-print(f"ROC AUC Score on Validation Set: {roc_auc_val}")
+# Fitting the CatBoost model to the entire training data
+catboost_model.fit(train_pool)
 
 # Load the test data
 test_data = pd.read_csv('processed_test.csv')

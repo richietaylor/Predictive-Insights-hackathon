@@ -34,7 +34,7 @@ lightgbm_model = lgb.LGBMClassifier(
     subsample=0.9,
     colsample_bytree=0.8,
     random_state=42,
-    objective='binary'
+    objective='regression'
 )
 
 # Performing 5-fold cross-validation
