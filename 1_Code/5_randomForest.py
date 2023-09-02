@@ -3,6 +3,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import roc_auc_score, make_scorer
+import matplotlib.pyplot as plt
 
 # Loading Data
 train_data = pd.read_csv('processed_train.csv')
@@ -42,7 +43,7 @@ X = train_data[common_features]
 y = train_data['Target']
 
 # Training the Random Forest Model
-random_forest_model = RandomForestClassifier(n_estimators=100, random_state=42, criterion='entropy')
+random_forest_model = RandomForestClassifier(n_estimators=100, random_state=42, criterion='entropy',)
 
 # Performing 5-fold cross-validation
 roc_auc_scorer = make_scorer(roc_auc_score, needs_proba=True)
@@ -65,3 +66,21 @@ predictions_file_path = 'predictions5.csv'
 predictions_df.to_csv(predictions_file_path, index=False)
 
 print(f"Mean AUC-ROC Score from Cross-Validation: {mean_cross_val_score:.4f}")
+
+# Predict the probabilities on the training set
+train_probabilities = random_forest_model.predict_proba(X)[:, 1]
+
+# Compute the pseudo-residuals
+residuals = y - train_probabilities
+
+# Plot the residuals
+plt.scatter(train_probabilities, residuals, alpha=0.5)
+plt.title('Residual Plot')
+plt.xlabel('Predicted Probabilities')
+plt.ylabel('Residuals')
+plt.axhline(y=0, color='r', linestyle='-')
+plt.show()
+
+# Compute and print the variance of the residuals
+residual_variance = residuals.var()
+print(f"Variance of the residuals: {residual_variance:.4f}")
