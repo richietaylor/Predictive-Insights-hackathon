@@ -5,6 +5,8 @@ import seaborn as sns
 import numpy as np
 from scipy.stats import chi2_contingency
 from statsmodels.stats.outliers_influence import variance_inflation_factor
+from sklearn.decomposition import PCA
+
 
 
 # Load the datasets
@@ -52,7 +54,8 @@ def bin_age(data):
     return data
 
 def bin_tenure(data):
-    tenure_bins = [0, 1, 3, 5, 10, float('inf')]
+    # Converting years to days for the bins
+    tenure_bins = [0, 365, 3*365, 5*365, 10*365, float('inf')]
     tenure_labels = ['0-1 years', '1-3 years', '3-5 years', '5-10 years', '10+ years']
     data['Tenure_group'] = pd.cut(data['Tenure'], bins=tenure_bins, labels=tenure_labels, right=False)
     return data
@@ -77,7 +80,7 @@ def process_data(data):
     # Map "unemployed" status to -1, and all other statuses to 1
     data['Status_mapped'] = data['Status'].apply(lambda x: -1 if x == 'unemployed' else 1)
 
-    # Create new feature by multiplying 'Tenure' by 'Status_mapped'
+    # Create new feature by multiplying 'Tenure'  by 'Status_mapped'
     data['Tenure_Status'] = data['Tenure'] * data['Status_mapped']
     
     # Apply ordinal encoding
@@ -141,38 +144,40 @@ def process_data(data):
     # 10. Total Achievements
     data['Total_achievements'] = data[['Math', 'Science', 'Additional_lang', 'Home_lang']].sum(axis=1)
 
-
+    data = bin_age(data)
+    data = bin_tenure(data)
+    
     # Dropping Columns
-    data.drop(columns=['Status_mapped'],inplace=True)
+    data.drop(columns=['Birthyear','Birthmonth','Tenure'],inplace=True)
 
     return data
 
 
 # Process both training and test data
 
-train_data = process_data_with_binning(train_data)
-test_data = process_data_with_binning(test_data)
+train_data = process_data(train_data)
+test_data = process_data(test_data)
 
 
 
-# Univariate Analysis
+# # Univariate Analysis
 features = train_data.columns.difference(['Person_id', 'Survey_date', 'Target'])
 # Adjusting the layout to accommodate all the features
 num_features = len(features)
 num_rows = int(np.ceil(num_features / 5))
 
-plt.figure(figsize=(20, num_rows * 3))
-for i, feature in enumerate(features, 1):
-    plt.subplot(num_rows, 5, i)
-    if train_data[feature].dtype == 'float64' or train_data[feature].dtype == 'int64':
-        sns.histplot(train_data[feature], bins=30)
-    else:
-        sns.countplot(data=train_data, x=feature)
-    plt.title(feature)
-    plt.xticks(rotation=45)
-    plt.tight_layout()
+# plt.figure(figsize=(20, num_rows * 3))
+# for i, feature in enumerate(features, 1):
+#     plt.subplot(num_rows, 5, i)
+#     if train_data[feature].dtype == 'float64' or train_data[feature].dtype == 'int64':
+#         sns.histplot(train_data[feature], bins=30)
+#     else:
+#         sns.countplot(data=train_data, x=feature)
+#     plt.title(feature)
+#     plt.xticks(rotation=45)
+#     plt.tight_layout()
 
-plt.show()
+# plt.show()
 
 # Correlation Coefficients for continuous variables
 correlation_with_target = train_data[features].corrwith(train_data['Target'])
@@ -191,8 +196,28 @@ vif_data = pd.DataFrame()
 vif_data["Feature"] = filtered_data.columns
 vif_data["VIF"] = [variance_inflation_factor(filtered_data.values, i) for i in range(filtered_data.shape[1])]
 
-vif_data.sort_values(by="VIF", ascending=False)
+print(vif_data.sort_values(by="VIF", ascending=False))
 
+
+pca_data = filtered_data.drop(columns=['Target'])
+pca_data = (pca_data - pca_data.mean()) / pca_data.std()
+
+
+pca = PCA()
+
+pca_result = pca.fit_transform(pca_data)
+
+explained_variance = pca.explained_variance_ratio_
+cumulative_variance = np.cumsum(explained_variance)
+
+plt.figure(figsize=(10,5))
+plt.bar(range(len(explained_variance)),explained_variance,alpha=0.5,align='center',label='individual explained variance')
+plt.step(range(len(cumulative_variance)),cumulative_variance,where='mid',label='cumulative explained variance')
+plt.xlabel("Principal components")
+plt.ylabel("Explained variance ratio")
+plt.legend(loc='best')
+plt.tight_layout()
+plt.show()  
 # Save processed datasets to CSV files
 train_data.to_csv('processed_train.csv', index=False)
 test_data.to_csv('processed_test.csv', index=False)
