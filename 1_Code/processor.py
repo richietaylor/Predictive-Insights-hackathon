@@ -180,8 +180,8 @@ num_rows = int(np.ceil(num_features / 5))
 # plt.show()
 
 # Correlation Coefficients for continuous variables
-correlation_with_target = train_data[features].corrwith(train_data['Target'])
-correlation_with_target.sort_values(ascending=False)
+# correlation_with_target = train_data[features].corrwith(train_data['Target'])
+# correlation_with_target.sort_values(ascending=False)
 
 # Computing the VIF (Variance Inflation Factor) to check for multicollinearity
 # We will only consider the numerical columns for this
@@ -221,3 +221,31 @@ plt.show()
 # Save processed datasets to CSV files
 train_data.to_csv('processed_train.csv', index=False)
 test_data.to_csv('processed_test.csv', index=False)
+
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LassoCV
+from sklearn.metrics import mean_squared_error
+
+# Splitting the data
+X = train_data.drop(columns=['Target', 'Person_id', 'Survey_date'])
+y = train_data['Target']
+
+# Normalize the data using StandardScaler
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X)
+X_val_scaled = scaler.transform(y)
+
+# Applying L1 regularization using LassoCV
+lasso = LassoCV(cv=5, random_state=42)
+lasso.fit(X_train_scaled, y)
+
+# Predicting on validation set
+y_pred = lasso.predict(X_val_scaled)
+mse = mean_squared_error(y, y_pred)
+
+# Checking features that have been dropped by Lasso (coefficient = 0)
+dropped_features = X.columns[lasso.coef_ == 0].tolist()
+
+
+print("MSE:", mse, dropped_features)
