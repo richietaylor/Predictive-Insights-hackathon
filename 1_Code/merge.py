@@ -2,10 +2,10 @@ import pandas as pd
 
 # List of paths to the CSV files containing the predictions
 predictions_files = [
-    'predictions1.csv',
-    'predictions2.csv',
-    'predictions3.csv',
-    'predictions5.csv',
+    'lightgbm.csv',
+    'xgboost.csv',
+    'catboost.csv',
+    'randomForest5.csv',
 
     # Add more files here as needed
 ]

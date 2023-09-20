@@ -29,7 +29,7 @@ catboost_model = CatBoostClassifier(iterations=3000,
                                     learning_rate=0.01,
                                     depth=5,
                                     cat_features=cat_columns,
-                                    verbose=200,loss_function='Logloss',thread_count=6,early_stopping_rounds=3)
+                                    verbose=200,loss_function='Logloss',thread_count=6,early_stopping_rounds=5)
 
 # Performing cross-validation
 cv_params = catboost_model.get_params()
