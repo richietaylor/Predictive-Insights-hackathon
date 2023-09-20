@@ -65,7 +65,7 @@ predictions_prob_df = pd.DataFrame({
 })
 
 # Path to save the CSV file
-predictions_csv_path = 'predictions3.csv'
+predictions_csv_path = 'catboost.csv'
 
 # Saving the DataFrame to a CSV file
 predictions_prob_df.to_csv(predictions_csv_path, index=False)

@@ -62,7 +62,7 @@ predictions_df = pd.DataFrame({
 
 
 # Saving Predictions to CSV
-predictions_file_path = 'predictions5.csv'
+predictions_file_path = 'randomForest5.csv'
 predictions_df.to_csv(predictions_file_path, index=False)
 
 print("Validation AUC-ROC Score:", auc_roc_val)

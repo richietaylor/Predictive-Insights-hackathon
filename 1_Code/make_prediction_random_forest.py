@@ -91,5 +91,5 @@ test_predictions = random_forest_model.predict(X_test)
 
 # Save predictions to CSV
 predictions_df = pd.DataFrame({'Person_id': person_id_test, 'Predicted_Unemployment': test_predictions})
-predictions_file_path = "predictions.csv"
+predictions_file_path = "randomforest.csv"
 predictions_df.to_csv(predictions_file_path, index=False)

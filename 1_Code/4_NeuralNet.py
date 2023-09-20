@@ -198,7 +198,7 @@ def main():
     predictions_prob_df = make_predictions(model, test_data, encoders, scaler)
 
     # Path to save the CSV file
-    predictions_csv_path = "predictions4.csv"
+    predictions_csv_path = "neuralnet.csv"
     # Saving the DataFrame to a CSV file
     predictions_prob_df.to_csv(predictions_csv_path, index=False)
 

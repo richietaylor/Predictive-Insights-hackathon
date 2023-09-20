@@ -37,4 +37,4 @@ weighted_probabilities /= sum(weights)
 predictions_ensemble_df['Probability_Unemployed'] = weighted_probabilities
 
 # Save the result to a new CSV file
-predictions_ensemble_df.to_csv('ensemble_predictions.csv', index=False)
+predictions_ensemble_df.to_csv('merge.csv', index=False)
