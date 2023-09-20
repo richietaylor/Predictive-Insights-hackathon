@@ -1,12 +1,13 @@
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 import lightgbm as lgb
+from sklearn.model_selection import cross_val_score
 
 # Load the training data
-train_data = pd.read_csv('Train.csv')
+train_data = pd.read_csv('processed_train.csv')
 
 # Handling Missing Values for Numerical Columns
-train_data.fillna(train_data.mean(numeric_only=True), inplace=True)
+train_data.fillna(train_data.min(numeric_only=True), inplace=True)
 
 # Encoding Categorical Variables
 label_encoders = {}
@@ -24,16 +25,31 @@ X_train = train_data.drop(columns=['Target'])
 y_train = train_data['Target']
 
 # Creating the LightGBM model
-lightgbm_model = lgb.LGBMClassifier(random_state=42)
+lightgbm_model = lgb.LGBMClassifier(
+    num_leaves=31,
+    min_child_samples=20,
+    max_depth=-1,
+    learning_rate=0.1,
+    n_estimators=150,
+    subsample=0.9,
+    colsample_bytree=0.8,
+    random_state=42,
+    objective='regression'
+)
+
+# Performing 5-fold cross-validation
+cross_val_scores = cross_val_score(lightgbm_model, X_train, y_train, cv=5)
+print(f'5-Fold Cross-Validation Scores: {cross_val_scores}')
+print(f'Mean Cross-Validation Score: {cross_val_scores.mean()}')
 
 # Fitting the LightGBM model to the training data
 lightgbm_model.fit(X_train, y_train)
 
 # Load the test data
-test_data = pd.read_csv('Test.csv')
+test_data = pd.read_csv('processed_test.csv')
 
 # Handling Missing Values for Numerical Columns in the test data
-test_data.fillna(train_data.mean(numeric_only=True), inplace=True)
+test_data.fillna(train_data.min(numeric_only=True), inplace=True)
 
 # Handling Missing Values for Categorical Columns and Encoding in the test data
 for column, le in label_encoders.items():
