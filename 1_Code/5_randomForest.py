@@ -67,20 +67,20 @@ predictions_df.to_csv(predictions_file_path, index=False)
 
 print(f"Mean AUC-ROC Score from Cross-Validation: {mean_cross_val_score:.4f}")
 
-# Predict the probabilities on the training set
-train_probabilities = random_forest_model.predict_proba(X)[:, 1]
+# # Predict the probabilities on the training set
+# train_probabilities = random_forest_model.predict_proba(X)[:, 1]
 
-# Compute the pseudo-residuals
-residuals = y - train_probabilities
+# # Compute the pseudo-residuals
+# residuals = y - train_probabilities
 
-# Plot the residuals
-plt.scatter(train_probabilities, residuals, alpha=0.5)
-plt.title('Residual Plot')
-plt.xlabel('Predicted Probabilities')
-plt.ylabel('Residuals')
-plt.axhline(y=0, color='r', linestyle='-')
-plt.show()
+# # Plot the residuals
+# plt.scatter(train_probabilities, residuals, alpha=0.5)
+# plt.title('Residual Plot')
+# plt.xlabel('Predicted Probabilities')
+# plt.ylabel('Residuals')
+# plt.axhline(y=0, color='r', linestyle='-')
+# plt.show()
 
-# Compute and print the variance of the residuals
-residual_variance = residuals.var()
-print(f"Variance of the residuals: {residual_variance:.4f}")
+# # Compute and print the variance of the residuals
+# residual_variance = residuals.var()
+# print(f"Variance of the residuals: {residual_variance:.4f}")
