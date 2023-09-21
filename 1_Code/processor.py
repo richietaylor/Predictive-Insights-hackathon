@@ -8,61 +8,96 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 from sklearn.decomposition import PCA
 
 # Load the datasets
-train_data = pd.read_csv('TrainTest.csv')
-test_data = pd.read_csv('TestTest.csv')
+train_data = pd.read_csv("TrainTest.csv")
+test_data = pd.read_csv("TestTest.csv")
+
 
 # Function to encode categorical variables
 def encode_categorical_columns(data):
-    categorical_columns = ['Status', 'Geography', 'Province']
+    categorical_columns = ["Status", "Geography", "Province"]
     for column in categorical_columns:
         encoder = LabelEncoder()
         data[column] = encoder.fit_transform(data[column])
     return data
 
+
 def encode_categorical_columns_with_ordinal(data):
-    categorical_columns = ['Status', 'Geography', 'Province']
+    categorical_columns = ["Status", "Geography", "Province"]
     encoder = OrdinalEncoder()
     data[categorical_columns] = encoder.fit_transform(data[categorical_columns])
     return data
 
 
 def calculate_exact_age(row):
-    age = row['Survey_year'] - row['Birthyear']
+    age = row["Survey_year"] - row["Birthyear"]
     # Adjusting the age based on months
-    age += (row['Survey_month'] - row['Birthmonth']) / 12
+    age += (row["Survey_month"] - row["Birthmonth"]) / 12
     return age
+
 
 # Function to transform percentage range columns
 def transform_percentage_columns(data):
-    percentage_columns = ['Math', 'Mathlit', 'Additional_lang', 'Home_lang', 'Science']
-    percentage_mapping = {'0 - 29 %': 0, '30 - 39 %': 1, '40 - 49 %': 2, '50 - 59 %': 3, '60 - 69 %': 4, '70 - 79 %': 5, '80 - 100 %': 6}
+    percentage_columns = ["Math", "Mathlit", "Additional_lang", "Home_lang", "Science"]
+    percentage_mapping = {
+        "0 - 29 %": 0,
+        "30 - 39 %": 1,
+        "40 - 49 %": 2,
+        "50 - 59 %": 3,
+        "60 - 69 %": 4,
+        "70 - 79 %": 5,
+        "80 - 100 %": 6,
+    }
     for column in percentage_columns:
         data[column] = data[column].map(percentage_mapping)
     return data
 
+
 def set_education_quality(row):
-    if row['Matric'] == 1:
-        return 1 if row['Schoolquintile'] >= 4 else 0
-    return row.get('education_quality', 0)  # default value if 'education_quality' doesn't exist
+    if row["Matric"] == 1:
+        return 1 if row["Schoolquintile"] >= 4 else 0
+    return row.get(
+        "education_quality", 0
+    )  # default value if 'education_quality' doesn't exist
+
+
+def bin_age(data):
+    age_bins = [18, 25, 35, 45, 55, float("inf")]
+    age_labels = ["18-25", "26-35", "36-45", "46-55", "56+"]
+    data["Age_group"] = pd.cut(
+        data["Age"], bins=age_bins, labels=age_labels, right=False
+    )
+    return data
+
+
+def bin_tenure(data):
+    # Converting years to days for the bins
+    tenure_bins = [0, 365, 3 * 365, 5 * 365, 10 * 365, float("inf")]
+    tenure_labels = ["0-1 years", "1-3 years", "3-5 years", "5-10 years", "10+ years"]
+    data["Tenure_group"] = pd.cut(
+        data["Tenure"], bins=tenure_bins, labels=tenure_labels, right=False
+    )
+    return data
 
 
 # Function to process the data
 def process_data(data):
     # Convert "Survey_date" to datetime and extract features
-    data['Survey_date'] = pd.to_datetime(data['Survey_date'])
-    data['Survey_year'] = data['Survey_date'].dt.year
-    data['Survey_month'] = data['Survey_date'].dt.month
-    data['Survey_day'] = data['Survey_date'].dt.day
+    data["Survey_date"] = pd.to_datetime(data["Survey_date"])
+    data["Survey_year"] = data["Survey_date"].dt.year
+    data["Survey_month"] = data["Survey_date"].dt.month
+    data["Survey_day"] = data["Survey_date"].dt.day
 
     # Calculate age
-    data['Age'] = data.apply(calculate_exact_age, axis=1)
-    
+    data["Age"] = data.apply(calculate_exact_age, axis=1)
+
     # Map "unemployed" status to -1, and all other statuses to 1
-    data['Status_mapped'] = data['Status'].apply(lambda x: -1 if x == 'unemployed' else 1)
+    data["Status_mapped"] = data["Status"].apply(
+        lambda x: -1 if x == "unemployed" else 1
+    )
 
     # Create new feature by multiplying 'Tenure' by 'Status_mapped'
-    data['Tenure_Status'] = data['Tenure'] * data['Status_mapped']
-    
+    data["Tenure_Status"] = data["Tenure"] * data["Status_mapped"]
+
     # Apply ordinal encoding
     data = encode_categorical_columns_with_ordinal(data)
 
@@ -70,29 +105,105 @@ def process_data(data):
     data = transform_percentage_columns(data)
 
     # Count the number of subjects passed
-    percentage_columns = ['Math', 'Mathlit', 'Additional_lang', 'Home_lang', 'Science']
-    data['Subjects_passed'] = data[percentage_columns].apply(lambda x: sum(val >= 5 for val in x), axis=1)
+    percentage_columns = ["Math", "Mathlit", "Additional_lang", "Home_lang", "Science"]
+    data["Subjects_passed"] = data[percentage_columns].apply(
+        lambda x: sum(val >= 5 for val in x), axis=1
+    )
 
     # Calculate the exposure based on subjects
-    data['Exposure'] = data[percentage_columns].apply(lambda x: sum((val >= 0)*2 - pd.isna(val) for val in x), axis=1)
+    data["Exposure"] = data[percentage_columns].apply(
+        lambda x: sum((val >= 0) * 2 - pd.isna(val) for val in x), axis=1
+    )
 
     # Create 'education_quality' column based on 'Schoolquintile' only if 'matric' is 1
-    data['education_quality'] = data.apply(set_education_quality, axis=1)
+    data["education_quality"] = data.apply(set_education_quality, axis=1)
 
     # Increase exposure by 10 if they have a degree
     # Assuming the column is named 'Degree' and has a value 'Yes' for those with a degree
-    data['Exposure'] = data.apply(lambda row: row['Exposure'] + 10 if row.get('Degree') == 'Yes' else row['Exposure'], axis=1)
+    data["Exposure"] = data.apply(
+        lambda row: row["Exposure"] + 10
+        if row.get("Degree") == "Yes"
+        else row["Exposure"],
+        axis=1,
+    )
 
     # Fill missing Tenure values
-    average_tenure_by_province = data.groupby('Province')['Tenure'].mean()
-    data['Tenure'] = data.apply(lambda row: average_tenure_by_province[row['Province']] if pd.isnull(row['Tenure']) else row['Tenure'], axis=1)
+    average_tenure_by_province = data.groupby("Province")["Tenure"].mean()
+    data["Tenure"] = data.apply(
+        lambda row: average_tenure_by_province[row["Province"]]
+        if pd.isnull(row["Tenure"])
+        else row["Tenure"],
+        axis=1,
+    )
 
     # Add the 'downturn' column based on the 'Round' value
-    data['downturn'] = data['Round'].apply(lambda x: 1 if x in [2, 4] else 0)
+    data["downturn"] = data["Round"].apply(lambda x: 1 if x in [2, 4] else 0)
+
+    ###### MAYBE REMOVE
+
+    # 1. Age at First Employment
+    data["Age_first_employment"] = data["Age"] - data["Tenure"] / 365.25
+
+    # 2. Interaction Features
+    data["Math_Science_interaction"] = data["Math"] * data["Science"]
+    # data['Geography_Educ_interaction'] = data['Geography'] * data['educ']
+
+    # 3. Province-based Features
+    # These are more suited for train data to avoid data leakage, but we'll add them here for simplicity
+    avg_tenure_per_province = data.groupby("Province")["Tenure"].mean().to_dict()
+    avg_age_per_province = data.groupby("Province")["Age"].mean().to_dict()
+    data["Avg_tenure_province"] = data["Province"].map(avg_tenure_per_province)
+    data["Avg_age_province"] = data["Province"].map(avg_age_per_province)
+
+    # 5. Age Groups
+    data["is_young_adult"] = (data["Age"] >= 18) & (data["Age"] <= 25).astype(int)
+    data["is_middle_aged"] = (data["Age"] > 25) & (data["Age"] <= 45).astype(int)
+    data["is_senior"] = (data["Age"] > 45).astype(int)
+
+    # 6. School and Education Interactions
+    for subject in ["Math", "Science"]:
+        data[f"{subject}_schoolquintile"] = data[subject] * data["Schoolquintile"]
+
+    # 7. Polarity of Subjects Passed
+    data["Subjects_polarity"] = data[
+        ["Math", "Science", "Additional_lang", "Home_lang"]
+    ].apply(lambda x: sum(val >= 5 for val in x) - sum(val <= 1 for val in x), axis=1)
+
+    # 9. Math-Science Combo
+    threshold = 5  # Assuming scores above 5 as high
+    data["Math_Science_high_combo"] = (
+        (data["Math"] >= threshold) & (data["Science"] >= threshold)
+    ).astype(int)
+
+    # 10. Total Achievements
+    data["Total_achievements"] = data[
+        ["Math", "Science", "Additional_lang", "Home_lang"]
+    ].sum(axis=1)
+
+    # data = bin_age(data)
+    # data = bin_tenure(data)
+    ########### MABYE REMOVE
 
     # Dropping Columns
-    data.drop(columns=['Tenure', 'Mathlit', 'Additional_lang', 'Survey_year', 'Age', 'Exposure', 'downturn'],inplace=True)
-
+    data.drop(
+        columns=[
+            "Mathlit",
+            "Additional_lang",
+            "Survey_year",
+            "Survey_month",
+            "Age",
+            "Exposure",
+            "Age_first_employment",
+            "Avg_tenure_province",
+            "Avg_age_province",
+            "Science",
+            "is_middle_aged",
+            "is_senior",
+            "Math_Science_high_combo",
+            "Total_achievements",
+        ],
+        inplace=True,
+    )
     return data
 
 
@@ -101,9 +212,8 @@ train_data = process_data(train_data)
 test_data = process_data(test_data)
 
 # Save processed datasets to CSV files
-train_data.to_csv('processed_train.csv', index=False)
-test_data.to_csv('processed_test.csv', index=False)
-
+train_data.to_csv("processed_train.csv", index=False)
+test_data.to_csv("processed_test.csv", index=False)
 
 
 # # # Univariate Analysis
@@ -163,16 +273,16 @@ test_data.to_csv('processed_test.csv', index=False)
 # plt.ylabel("Explained variance ratio")
 # plt.legend(loc='best')
 # plt.tight_layout()
-# plt.show()  
-
-
+# plt.show()
 
 
 # Handling Missing Values
-numerical_columns = train_data.select_dtypes(include=['int64', 'float64']).columns.tolist()
-categorical_columns = train_data.select_dtypes(include=['object']).columns.tolist()
-numerical_columns.remove('Target')
-categorical_columns.remove('Person_id')
+numerical_columns = train_data.select_dtypes(
+    include=["int64", "float64"]
+).columns.tolist()
+categorical_columns = train_data.select_dtypes(include=["object"]).columns.tolist()
+numerical_columns.remove("Target")
+categorical_columns.remove("Person_id")
 
 # For numerical columns, fill missing values with the minimum
 for col in numerical_columns:
@@ -187,16 +297,14 @@ for col in categorical_columns:
     test_data[col].fillna(mode_value, inplace=True)
 
 
-
-
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LassoCV
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
 
 # Splitting the data
-X = train_data.drop(columns=['Target', 'Person_id', 'Survey_date'])
-y = train_data['Target']
+X = train_data.drop(columns=["Target", "Person_id", "Survey_date"])
+y = train_data["Target"]
 
 X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
 # Normalize the data using StandardScaler
