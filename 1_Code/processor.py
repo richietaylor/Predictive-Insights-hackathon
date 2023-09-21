@@ -91,7 +91,7 @@ def process_data(data):
     data['downturn'] = data['Round'].apply(lambda x: 1 if x in [2, 4] else 0)
 
     # Dropping Columns
-    data.drop(columns=['Status_mapped'],inplace=True)
+    data.drop(columns=['Tenure', 'Mathlit', 'Additional_lang', 'Survey_year', 'Age', 'Exposure', 'downturn'],inplace=True)
 
     return data
 
