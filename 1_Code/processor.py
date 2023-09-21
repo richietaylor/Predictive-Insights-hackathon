@@ -1,5 +1,11 @@
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder, OrdinalEncoder
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+from scipy.stats import chi2_contingency
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+from sklearn.decomposition import PCA
 
 # Load the datasets
 train_data = pd.read_csv('TrainTest.csv')
@@ -97,3 +103,117 @@ test_data = process_data(test_data)
 # Save processed datasets to CSV files
 train_data.to_csv('processed_train.csv', index=False)
 test_data.to_csv('processed_test.csv', index=False)
+
+
+
+# # # Univariate Analysis
+# features = train_data.columns.difference(['Person_id', 'Survey_date', 'Target'])
+# # Adjusting the layout to accommodate all the features
+# num_features = len(features)
+# num_rows = int(np.ceil(num_features / 5))
+
+# plt.figure(figsize=(20, num_rows * 3))
+# for i, feature in enumerate(features, 1):
+#     plt.subplot(num_rows, 5, i)
+#     if train_data[feature].dtype == 'float64' or train_data[feature].dtype == 'int64':
+#         sns.histplot(train_data[feature], bins=30)
+#     else:
+#         sns.countplot(data=train_data, x=feature)
+#     plt.title(feature)
+#     plt.xticks(rotation=45)
+#     plt.tight_layout()
+
+# plt.show()
+
+# Correlation Coefficients for continuous variables
+# correlation_with_target = train_data[features].corrwith(train_data['Target'])
+# correlation_with_target.sort_values(ascending=False)
+
+# Computing the VIF (Variance Inflation Factor) to check for multicollinearity
+# We will only consider the numerical columns for this
+
+# Filtering numeric columns
+# numeric_cols = train_data.select_dtypes(include=['float64', 'int64']).columns
+
+# # Dropping columns with NaN values for VIF computation
+# filtered_data = train_data[numeric_cols].dropna(axis=1)
+
+# vif_data = pd.DataFrame()
+# vif_data["Feature"] = filtered_data.columns
+# vif_data["VIF"] = [variance_inflation_factor(filtered_data.values, i) for i in range(filtered_data.shape[1])]
+
+# print(vif_data.sort_values(by="VIF", ascending=False))
+
+
+# pca_data = filtered_data.drop(columns=['Target'])
+# pca_data = (pca_data - pca_data.mean()) / pca_data.std()
+
+
+# pca = PCA()
+
+# pca_result = pca.fit_transform(pca_data)
+
+# explained_variance = pca.explained_variance_ratio_
+# cumulative_variance = np.cumsum(explained_variance)
+
+# plt.figure(figsize=(10,5))
+# plt.bar(range(len(explained_variance)),explained_variance,alpha=0.5,align='center',label='individual explained variance')
+# plt.step(range(len(cumulative_variance)),cumulative_variance,where='mid',label='cumulative explained variance')
+# plt.xlabel("Principal components")
+# plt.ylabel("Explained variance ratio")
+# plt.legend(loc='best')
+# plt.tight_layout()
+# plt.show()  
+
+
+
+
+# Handling Missing Values
+numerical_columns = train_data.select_dtypes(include=['int64', 'float64']).columns.tolist()
+categorical_columns = train_data.select_dtypes(include=['object']).columns.tolist()
+numerical_columns.remove('Target')
+categorical_columns.remove('Person_id')
+
+# For numerical columns, fill missing values with the minimum
+for col in numerical_columns:
+    min_value = train_data[col].min()
+    train_data[col].fillna(min_value, inplace=True)
+    test_data[col].fillna(min_value, inplace=True)
+
+# For categorical columns, fill missing values with the mode
+for col in categorical_columns:
+    mode_value = train_data[col].mode()[0]
+    train_data[col].fillna(mode_value, inplace=True)
+    test_data[col].fillna(mode_value, inplace=True)
+
+
+
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LassoCV
+from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import train_test_split
+
+# Splitting the data
+X = train_data.drop(columns=['Target', 'Person_id', 'Survey_date'])
+y = train_data['Target']
+
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+# Normalize the data using StandardScaler
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_val_scaled = scaler.transform(X_val)
+
+# Applying L1 regularization using LassoCV
+lasso = LassoCV(cv=5, random_state=42)
+lasso.fit(X_train_scaled, y_train)
+
+# Predicting on validation set
+y_pred = lasso.predict(X_val_scaled)
+mse = mean_squared_error(y_val, y_pred)
+
+# Checking features that have been dropped by Lasso (coefficient = 0)
+dropped_features = X.columns[lasso.coef_ == 0].tolist()
+
+
+print("MSE:", mse, dropped_features)
