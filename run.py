@@ -13,7 +13,7 @@ def run_script(script):
             ["python", script], capture_output=True, text=True, check=True
         )
 
-        score = re.search(r'(Mean.+?0\.\d+)|(MSE: 0\.\d+ \[.??\])',result.stdout)
+        score = re.search(r'(Mean.+?0\.\d+)|(MSE.+? 0\.\d+ \[.+\])',result.stdout)
         # print(score)
         # Print a message indicating the successful execution of the script
         if not score:
@@ -49,6 +49,7 @@ python_scripts = [
     "./1_Code/2_xgboost.py",
     "./1_Code/3_cboost.py",
     "./1_Code/5_randomForest.py",
+    "./1_Code/6_histboosting.py",
     "./1_Code/merge.py",
 ]
 

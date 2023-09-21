@@ -6,19 +6,9 @@ from sklearn.model_selection import cross_val_score
 # Load the training data
 train_data = pd.read_csv('processed_train.csv')
 
-# Handling Missing Values for Numerical Columns
-train_data.fillna(train_data.min(numeric_only=True), inplace=True)
-
-# Encoding Categorical Variables
-label_encoders = {}
-for column in train_data.select_dtypes(include=['object']).columns:
-    if column not in ['Person_id', 'Survey_date']:
-        le = LabelEncoder()
-        train_data[column] = le.fit_transform(train_data[column])
-        label_encoders[column] = le
 
 # Removing unnecessary columns
-train_data.drop(columns=['Person_id', 'Survey_date'], inplace=True)
+train_data.drop(columns=['Person_id'], inplace=True)
 
 # Separating the dependent and independent variables
 X_train = train_data.drop(columns=['Target'])
@@ -47,17 +37,9 @@ xgboost_model.fit(X_train, y_train)
 # Load the test data
 test_data = pd.read_csv('processed_test.csv')
 
-# Handling Missing Values for Numerical Columns in the test data
-test_data.fillna(train_data.min(numeric_only=True), inplace=True)
-
-# Handling Missing Values for Categorical Columns and Encoding in the test data
-for column, le in label_encoders.items():
-    mode_value = train_data[column].mode()[0]
-    test_data[column].fillna(mode_value, inplace=True)
-    test_data[column] = test_data[column].apply(lambda x: le.transform([x])[0] if x in le.classes_ else -1)
 
 # Removing unnecessary columns from the test data
-test_data_processed = test_data.drop(columns=['Person_id', 'Survey_date'])
+test_data_processed = test_data.drop(columns=['Person_id'])
 
 # Making predictions on the test data (predicting probabilities for the positive class)
 y_test_prob_pred_xgb = xgboost_model.predict_proba(test_data_processed)[:, 1]
