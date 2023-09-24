@@ -99,16 +99,12 @@ def process_data(data, mean_target_by_round=None):
     # Calculate age
     data["Age"] = data.apply(calculate_exact_age, axis=1)
 
-    # Map "unemployed" status to -1, and all other statuses to 1
-    data["Status_mapped"] = data["Status"].apply(
-        lambda x: -1 if x == "unemployed" else 1
-    )
+   # Map "unemployed" status to -1, and all other statuses to 1
+    data["Status_mapped"] = data["Status"].apply(lambda x: -1 if x == "unemployed" else 1)
 
-    # Create new feature by multiplying 'Tenure' by 'Status_mapped'
-    data["Tenure_Status"] = data["Tenure"] * data["Status_mapped"]
+    # Modify the Tenure value based on the Status
+    data["Tenure_Status"] = data.apply(lambda row: (row["Tenure"] ** 2 if row["Status_mapped"] == -1 else row["Tenure"]) * row["Status_mapped"], axis=1)
 
-    # Apply ordinal encoding
-    data = encode_categorical_columns_with_onehot(data)
 
     # Transform percentage range columns
     data = transform_percentage_columns(data)
@@ -136,7 +132,7 @@ def process_data(data, mean_target_by_round=None):
         axis=1,
     )
 
-    # # Fill missing Tenure values
+    # # # Fill missing Tenure values
     # average_tenure_by_province = data.groupby("Province")["Tenure"].mean()
     # data["Tenure"] = data.apply(
     #     lambda row: average_tenure_by_province[row["Province"]]
@@ -157,8 +153,13 @@ def process_data(data, mean_target_by_round=None):
     data["Math_Science_interaction"] = data["Math"] * data["Science"]
     # data['Geography_Educ_interaction'] = data['Geography'] * data['educ']
 
+
+    # Apply ordinal encoding
+    data = encode_categorical_columns_with_onehot(data)
+
+
     # 3. Province-based Features
-    # These are more suited for train data to avoid data leakage, but we'll add them here for simplicity
+    # # These are more suited for train data to avoid data leakage, but we'll add them here for simplicity
     # avg_tenure_per_province = data.groupby("Province")["Tenure"].mean().to_dict()
     # avg_age_per_province = data.groupby("Province")["Age"].mean().to_dict()
     # data["Avg_tenure_province"] = data["Province"].map(avg_tenure_per_province)
@@ -192,6 +193,13 @@ def process_data(data, mean_target_by_round=None):
     # data = bin_age(data)
     # data = bin_tenure(data)
     # ########## MABYE REMOVE
+
+
+    # Polynomial Features
+    # data["Math^2"] = data["Math"] ** 2
+    # data["Science^2"] = data["Science"] ** 2
+    # data["Math_x_Science"] = data["Math"] * data["Science"]  # interaction term
+    # data["Additional_lang^2"] = data["Additional_lang"] ** 2
     # Dropping Columns
     data.drop(
         columns=[

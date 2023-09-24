@@ -2,7 +2,7 @@ import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 import xgboost as xgb
 from sklearn.model_selection import cross_val_score
-
+import shap
 # Load the training data
 train_data = pd.read_csv('processed_train.csv')
 
@@ -57,3 +57,13 @@ predictions_csv_path = 'xgboost.csv'
 predictions_prob_df.to_csv(predictions_csv_path, index=False)
 
 print(f"Predictions saved to {predictions_csv_path}")
+
+
+# # Create SHAP explainer
+# explainer = shap.TreeExplainer(xgboost_model)
+
+# # Compute SHAP values for the entire training set (or a subset if it's too large)
+# shap_values = explainer.shap_values(X_train)
+
+# # Plot summary of SHAP values
+# shap.summary_plot(shap_values, X_train)
