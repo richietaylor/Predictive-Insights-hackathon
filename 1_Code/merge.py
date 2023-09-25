@@ -6,7 +6,7 @@ predictions_files = [
     'xgboost.csv',
     'catboost.csv',
     'randomforest.csv',
-    'histboosting.csv'
+    # 'histboosting.csv'
 
     # Add more files here as needed
 ]
@@ -17,7 +17,7 @@ weights = [
     1.0, 
     1.0, 
     1.0,
-    1.0
+    # 1.0
     
 ]
 

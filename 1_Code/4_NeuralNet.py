@@ -7,30 +7,34 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_auc_score
 import pandas as pd
 from imblearn.over_sampling import ADASYN
-# Load dataset
-data = pd.read_csv("processed_train.csv")
-X = data.drop(columns=["Person_id", "Target"]).values
-y = data["Target"].values
+# Load training dataset
+train_data = pd.read_csv("processed_train_advanced_train.csv")
+X_train = train_data.drop(columns=["Person_id", "Target"]).values
+y_train = train_data["Target"].values
 
-# Split the dataset
-X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
-
-# Apply ADASYN
-from imblearn.over_sampling import ADASYN
+# Apply ADASYN to the training data
 adasyn = ADASYN(random_state=42)
 X_resampled, y_resampled = adasyn.fit_resample(X_train, y_train)
 
-# Normalize the data
+# Normalize the training data
 scaler = StandardScaler()
 X_train_normalized = scaler.fit_transform(X_resampled)
-X_val_normalized = scaler.transform(X_val)
 
-# Convert data to PyTorch tensors
+# Convert training data to PyTorch tensors
 X_train_tensor = torch.tensor(X_train_normalized, dtype=torch.float32)
 y_train_tensor = torch.tensor(y_resampled[:, None], dtype=torch.float32)
+
+# Load validation dataset (from processed_train_advanced_test.csv)
+val_data = pd.read_csv("processed_train_advanced_test.csv")
+X_val = val_data.drop(columns=["Person_id", "Target"]).values
+y_val = val_data["Target"].values
+
+# Normalize the validation data using the same scaler
+X_val_normalized = scaler.transform(X_val)
+
+# Convert validation data to PyTorch tensors
 X_val_tensor = torch.tensor(X_val_normalized, dtype=torch.float32)
 y_val_tensor = torch.tensor(y_val[:, None], dtype=torch.float32)
-
 # Create DataLoader
 train_data = TensorDataset(X_train_tensor, y_train_tensor)
 train_loader = DataLoader(dataset=train_data, batch_size=64, shuffle=True)
@@ -43,20 +47,20 @@ class NeuralNetwork(nn.Module):
         super(NeuralNetwork, self).__init__()
         
         # First layer
-        self.layer1 = nn.Linear(input_dim, 50)
-        self.batch_norm1 = nn.BatchNorm1d(50)
+        self.layer1 = nn.Linear(input_dim, 10)
+        self.batch_norm1 = nn.BatchNorm1d(10)
         self.relu1 = nn.LeakyReLU()
         self.dropout1 = nn.Dropout(dropout_prob)
         
         # Second layer
-        self.layer2 = nn.Linear(50, 25)
-        self.batch_norm2 = nn.BatchNorm1d(25)
-        self.relu2 = nn.LeakyReLU()
+        self.layer2 = nn.Linear(10, 5)
+        self.batch_norm2 = nn.BatchNorm1d(5)
+        self.relu2 = nn.ReLU()
         self.dropout2 = nn.Dropout(dropout_prob)
         
         # Third layer (output layer)
-        self.layer3 = nn.Linear(25, 1)
-        # self.sigmoid = nn.Sigmoid()
+        self.layer3 = nn.Linear(5, 1)
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         x = self.layer1(x)
@@ -76,7 +80,7 @@ model = NeuralNetwork(num_features)
 
 # Loss and Optimizer
 criterion = nn.BCELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.0001)
+optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 
 # Parameters for early stopping
@@ -127,3 +131,28 @@ with torch.no_grad():
     score = roc_auc_score(y_val_tensor, val_predictions)
     print(f"AUC-ROC Score on validation data: {score:.4f}")
 
+
+
+# Load the test advanced dataset
+test_advanced_data = pd.read_csv("processed_test_advanced.csv")
+X_test_advanced = test_advanced_data.drop(columns=["Person_id"]).values
+
+# Normalize the test data using the same scaler used for training and validation data
+X_test_advanced_normalized = scaler.transform(X_test_advanced)
+
+# Convert the test data to PyTorch tensor
+X_test_advanced_tensor = torch.tensor(X_test_advanced_normalized, dtype=torch.float32)
+
+# Make predictions with the trained model
+model.eval()
+with torch.no_grad():
+    test_advanced_predictions = model(X_test_advanced_tensor)
+
+# Save the predictions to neuralnet.csv
+predictions_df = pd.DataFrame({
+    'Person_id': test_advanced_data['Person_id'],
+    'Probability_Unemployed': test_advanced_predictions.numpy().flatten()
+})
+
+predictions_df.to_csv('neuralnet.csv', index=False)
+print("Predictions saved to neuralnet.csv")

@@ -7,6 +7,7 @@ from scipy.stats import chi2_contingency
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 from sklearn.decomposition import PCA
 
+
 # Function to encode categorical variables
 def encode_categorical_columns(data):
     categorical_columns = ["Status", "Geography", "Province"]
@@ -46,6 +47,13 @@ def transform_percentage_columns(data):
         data[column] = data[column].map(percentage_mapping)
     return data
 
+def impute_maths_combined(row):
+    if row["Math"] >= 3:
+        return 2
+    elif row["Mathlit"] >= 3:
+        return 1
+    else:
+        return 0
 
 def set_education_quality(row):
     if row["Matric"] == 1:
@@ -96,19 +104,39 @@ def process_data(data, mean_target_by_round=None):
     data["Survey_month"] = data["Survey_date"].dt.month
     data["Survey_day"] = data["Survey_date"].dt.day
 
+    # One-hot encode "Province" and "Geography"
+    province_dummies = pd.get_dummies(data["Province"], prefix="Province")
+    geography_dummies = pd.get_dummies(data["Geography"], prefix="Geography")
+
+    # Create interaction terms
+    for province_col in province_dummies.columns:
+        for geo_col in geography_dummies.columns:
+            interaction_col_name = f"{province_col}_x_{geo_col}"
+            data[interaction_col_name] = (
+                province_dummies[province_col] * geography_dummies[geo_col]
+            )
+
     # Calculate age
     data["Age"] = data.apply(calculate_exact_age, axis=1)
 
-   # Map "unemployed" status to -1, and all other statuses to 1
-    data["Status_mapped"] = data["Status"].apply(lambda x: -1 if x == "unemployed" else 1)
+    # Map "unemployed" status to -1, and all other statuses to 1
+    data["Status_mapped"] = data["Status"].apply(
+        lambda x: -1 if x == "unemployed" else 1
+    )
 
     # Modify the Tenure value based on the Status
-    data["Tenure_Status"] = data.apply(lambda row: (row["Tenure"] ** 2 if row["Status_mapped"] == -1 else row["Tenure"]) * row["Status_mapped"], axis=1)
-
+    data["Tenure_Status"] = data.apply(
+        lambda row: (
+            row["Tenure"] ** 2 if row["Status_mapped"] == -1 else row["Tenure"]
+        )
+        * row["Status_mapped"],
+        axis=1,
+    )
 
     # Transform percentage range columns
     data = transform_percentage_columns(data)
 
+    data['Maths_combined'] = data.apply(impute_maths_combined, axis=1)
     # Count the number of subjects passed
     percentage_columns = ["Math", "Mathlit", "Additional_lang", "Home_lang", "Science"]
     data["Subjects_passed"] = data[percentage_columns].apply(
@@ -132,14 +160,7 @@ def process_data(data, mean_target_by_round=None):
         axis=1,
     )
 
-    # # # Fill missing Tenure values
-    # average_tenure_by_province = data.groupby("Province")["Tenure"].mean()
-    # data["Tenure"] = data.apply(
-    #     lambda row: average_tenure_by_province[row["Province"]]
-    #     if pd.isnull(row["Tenure"])
-    #     else row["Tenure"],
-    #     axis=1,
-    # )
+    # # Fill missing Tenure values
 
     # Add the 'downturn' column based on the 'Round' value
     data["downturn"] = data["Round"].apply(lambda x: 1 if x in [1, 3] else 0)
@@ -153,10 +174,8 @@ def process_data(data, mean_target_by_round=None):
     data["Math_Science_interaction"] = data["Math"] * data["Science"]
     # data['Geography_Educ_interaction'] = data['Geography'] * data['educ']
 
-
     # Apply ordinal encoding
     data = encode_categorical_columns_with_onehot(data)
-
 
     # 3. Province-based Features
     # # These are more suited for train data to avoid data leakage, but we'll add them here for simplicity
@@ -193,7 +212,6 @@ def process_data(data, mean_target_by_round=None):
     # data = bin_age(data)
     # data = bin_tenure(data)
     # ########## MABYE REMOVE
-
 
     # Polynomial Features
     # data["Math^2"] = data["Math"] ** 2
@@ -340,3 +358,16 @@ test_data.drop(columns=dropped_features_en, inplace=True)
 # Save processed datasets to CSV files
 train_data.to_csv("processed_train.csv", index=False)
 test_data.to_csv("processed_test.csv", index=False)
+
+train_data.to_csv("processed_train_advanced.csv", index=False)
+test_data.to_csv("processed_test_advanced.csv", index=False)
+
+# # Load the processed_train_advanced.csv dataset
+# advanced_train_data = pd.read_csv("processed_train_advanced.csv")
+
+# # Split the data into a training set and a testing (validation) set
+# advanced_train_data_train, advanced_train_data_test = train_test_split(advanced_train_data, test_size=0.2, random_state=42)
+
+# # Save the splits to CSV files
+# advanced_train_data_train.to_csv("processed_train_advanced_train.csv", index=False)
+# advanced_train_data_test.to_csv("processed_train_advanced_test.csv", index=False)
