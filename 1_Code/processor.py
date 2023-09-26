@@ -128,6 +128,35 @@ def process_data(data, mean_target_by_round=None):
                 )
 
 
+    # interactions = {
+    #     "Province": ["Geography"],
+    #     "Geography": ["Status", "Schoolquintile"],
+    #     "Status": ["Province", "Tenure"],
+    #     "Sa_citizen": ["Additional_lang"],
+    #     "Diploma": ["Tenure"],
+    #     "Degree": ["Tenure"],
+    # }
+
+    # # We use pandas .get_dummies only once for each unique column in interactions
+    # dummies = {col: pd.get_dummies(data[col], prefix=col) for col in set(interactions.keys()).union(*interactions.values())}
+
+    # for col, interact_with in interactions.items():
+    #     for interact_col in interact_with:
+    #         # Vectorized operation for creating interaction terms
+    #         interaction_matrix = dummies[col].values[:, :, None] * dummies[interact_col].values[:, None, :]
+            
+    #         # Efficient memory usage by converting boolean matrix to uint8
+    #         interaction_matrix = interaction_matrix.astype('uint8')
+            
+    #         # Constructing column names and creating new DataFrame for interactions
+    #         columns = [f"{col_name}_x_{interact_col_name}" for col_name in dummies[col].columns for interact_col_name in dummies[interact_col].columns]
+    #         interaction_df = pd.DataFrame(interaction_matrix.reshape(len(data), -1), columns=columns, index=data.index)
+            
+    #         # Concatenating the interaction DataFrame with the original DataFrame
+    #         data = pd.concat([data, interaction_df], axis=1)
+
+
+
 # TOO SLOW 
 
 #     interactionOne = [
