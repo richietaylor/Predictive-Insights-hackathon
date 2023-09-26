@@ -107,7 +107,9 @@ def process_data(data, mean_target_by_round=None):
     interactions = {
         "Province": "Geography",
         "Geography": "Status",
-        "Status": "Province"
+        "Status": "Province",
+        "Status": "Tenure",
+        "Sa_citizen": "Additional_lang",
     }
     for x in interactions:
         province_dummies = pd.get_dummies(data[x], prefix=x)
