@@ -104,17 +104,88 @@ def process_data(data, mean_target_by_round=None):
     data["Survey_month"] = data["Survey_date"].dt.month
     data["Survey_day"] = data["Survey_date"].dt.day
 
-    # One-hot encode "Province" and "Geography"
-    province_dummies = pd.get_dummies(data["Province"], prefix="Province")
-    geography_dummies = pd.get_dummies(data["Geography"], prefix="Geography")
+    interactions = {
+        "Province": "Geography",
+        "Geography": "Status",
+        "Status": "Province",
+        "Status": "Tenure",
+        "Sa_citizen": "Additional_lang",
+        # "Geography": "Schoolquintile",
+        # "Province": "Schoolquintile",
+        # "Diploma": "Tenure",
+        # "Degree": "Tenure",
+    }
+    for x in interactions:
+        province_dummies = pd.get_dummies(data[x], prefix=x)
+        geography_dummies = pd.get_dummies(data[interactions[x]], prefix=interactions[x])
 
-    # Create interaction terms
-    for province_col in province_dummies.columns:
-        for geo_col in geography_dummies.columns:
-            interaction_col_name = f"{province_col}_x_{geo_col}"
-            data[interaction_col_name] = (
-                province_dummies[province_col] * geography_dummies[geo_col]
-            )
+        # Create interaction terms
+        for province_col in province_dummies.columns:
+            for geo_col in geography_dummies.columns:
+                interaction_col_name = f"{province_col}_x_{geo_col}"
+                data[interaction_col_name] = (
+                    province_dummies[province_col] * geography_dummies[geo_col]
+                )
+
+
+    # interactions = {
+    #     "Province": ["Geography"],
+    #     "Geography": ["Status", "Schoolquintile"],
+    #     "Status": ["Province", "Tenure"],
+    #     "Sa_citizen": ["Additional_lang"],
+    #     "Diploma": ["Tenure"],
+    #     "Degree": ["Tenure"],
+    # }
+
+    # # We use pandas .get_dummies only once for each unique column in interactions
+    # dummies = {col: pd.get_dummies(data[col], prefix=col) for col in set(interactions.keys()).union(*interactions.values())}
+
+    # for col, interact_with in interactions.items():
+    #     for interact_col in interact_with:
+    #         # Vectorized operation for creating interaction terms
+    #         interaction_matrix = dummies[col].values[:, :, None] * dummies[interact_col].values[:, None, :]
+            
+    #         # Efficient memory usage by converting boolean matrix to uint8
+    #         interaction_matrix = interaction_matrix.astype('uint8')
+            
+    #         # Constructing column names and creating new DataFrame for interactions
+    #         columns = [f"{col_name}_x_{interact_col_name}" for col_name in dummies[col].columns for interact_col_name in dummies[interact_col].columns]
+    #         interaction_df = pd.DataFrame(interaction_matrix.reshape(len(data), -1), columns=columns, index=data.index)
+            
+    #         # Concatenating the interaction DataFrame with the original DataFrame
+    #         data = pd.concat([data, interaction_df], axis=1)
+
+
+
+# TOO SLOW 
+
+#     interactionOne = [
+#     "Round", "Status", "Tenure", "Geography", "Province",
+#     "Matric", "Degree", "Diploma", "Schoolquintile",
+#     "Math", "Mathlit", "Additional_lang", "Home_lang",
+#     "Science", "Female", "Sa_citizen", "Birthyear", 
+#     "Birthmonth", "Target"
+# ]
+#     interactionTwo = [
+#     "Round", "Status", "Tenure", "Geography", "Province",
+#     "Matric", "Degree", "Diploma", "Schoolquintile",
+#     "Math", "Mathlit", "Additional_lang", "Home_lang",
+#     "Science", "Female", "Sa_citizen", "Birthyear", 
+#     "Birthmonth", "Target"
+# ]
+
+#     for y in interactionOne:
+#         for x in interactionTwo:
+#             province_dummies = pd.get_dummies(data[y], prefix=y)
+#             geography_dummies = pd.get_dummies(data[x], prefix=x)
+
+#             # Create interaction terms
+#             for province_col in province_dummies.columns:
+#                 for geo_col in geography_dummies.columns:
+#                     interaction_col_name = f"{province_col}_x_{geo_col}"
+#                     data[interaction_col_name] = (
+#                         province_dummies[province_col] * geography_dummies[geo_col]
+#                     )
 
     # Calculate age
     data["Age"] = data.apply(calculate_exact_age, axis=1)
