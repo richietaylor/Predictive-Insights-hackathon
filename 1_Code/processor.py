@@ -311,50 +311,50 @@ def process_data(data, mean_target_by_round=None):
 train_data = pd.read_csv("TrainTest.csv")
 test_data = pd.read_csv("TestTest.csv")
 
-import xgboost as xgb
+# import xgboost as xgb
 
-def impute_tenure_with_xgboost(train_data, test_data):
-    # Ensure that the test_data doesn't have the 'Target' column
-    test_data = test_data.drop(columns=['Target'], errors='ignore')
+# def impute_tenure_with_xgboost(train_data, test_data):
+#     # Ensure that the test_data doesn't have the 'Target' column
+#     test_data = test_data.drop(columns=['Target'], errors='ignore')
     
-    # Concatenate train and test data
-    combined_data = pd.concat([train_data, test_data], axis=0, ignore_index=True)
+#     # Concatenate train and test data
+#     combined_data = pd.concat([train_data, test_data], axis=0, ignore_index=True)
     
-    # Split data into sets with known and unknown tenure values
-    data_known_tenure = combined_data.dropna(subset=['Tenure'])
-    data_unknown_tenure = combined_data[combined_data['Tenure'].isnull()]
+#     # Split data into sets with known and unknown tenure values
+#     data_known_tenure = combined_data.dropna(subset=['Tenure'])
+#     data_unknown_tenure = combined_data[combined_data['Tenure'].isnull()]
     
-    # Features for prediction (excluding non-numeric columns and target columns)
-    features = combined_data.drop(columns=['Tenure', 'Person_id', 'Target']).select_dtypes(include=["int64", "float64"]).columns
+#     # Features for prediction (excluding non-numeric columns and target columns)
+#     features = combined_data.drop(columns=['Tenure', 'Person_id', 'Target']).select_dtypes(include=["int64", "float64"]).columns
     
-    # Train an XGBoost regressor
-    xgb_regressor = xgb.XGBRegressor(n_estimators=100, objective='reg:squarederror', random_state=42)
-    xgb_regressor.fit(data_known_tenure[features], data_known_tenure['Tenure'])
+#     # Train an XGBoost regressor
+#     xgb_regressor = xgb.XGBRegressor(n_estimators=100, objective='reg:squarederror', random_state=42)
+#     xgb_regressor.fit(data_known_tenure[features], data_known_tenure['Tenure'])
     
-    # Predict missing tenure values
-    predicted_tenure = xgb_regressor.predict(data_unknown_tenure[features])
+#     # Predict missing tenure values
+#     predicted_tenure = xgb_regressor.predict(data_unknown_tenure[features])
     
-    # Replace missing values with predicted values using .loc to avoid warnings
-    data_unknown_tenure.loc[:, 'Tenure'] = predicted_tenure
+#     # Replace missing values with predicted values using .loc to avoid warnings
+#     data_unknown_tenure.loc[:, 'Tenure'] = predicted_tenure
     
-    # Concatenate data back together
-    imputed_data = pd.concat([data_known_tenure, data_unknown_tenure], axis=0).sort_index()
+#     # Concatenate data back together
+#     imputed_data = pd.concat([data_known_tenure, data_unknown_tenure], axis=0).sort_index()
     
-    # Separate back into original train and test sets
-    imputed_train_data = imputed_data.iloc[:len(train_data)]
-    imputed_test_data = imputed_data.iloc[len(train_data):].drop(columns=['Target'], errors='ignore')
+#     # Separate back into original train and test sets
+#     imputed_train_data = imputed_data.iloc[:len(train_data)]
+#     imputed_test_data = imputed_data.iloc[len(train_data):].drop(columns=['Target'], errors='ignore')
     
-    return imputed_train_data, imputed_test_data
+#     return imputed_train_data, imputed_test_data
 
-# Impute tenure values in the train and test data
-imputed_train_data, imputed_test_data = impute_tenure_with_xgboost(train_data, test_data)  # Using df_new twice as a placeholder, replace with actual test data when available
+# # Impute tenure values in the train and test data
+# imputed_train_data, imputed_test_data = impute_tenure_with_xgboost(train_data, test_data)  # Using df_new twice as a placeholder, replace with actual test data when available
 
-# Check if missing values in tenure have been imputed
-missing_after_imputation = imputed_train_data['Tenure'].isnull().sum()
-print(missing_after_imputation)
+# # Check if missing values in tenure have been imputed
+# missing_after_imputation = imputed_train_data['Tenure'].isnull().sum()
+# print(missing_after_imputation)
 
-train_data = imputed_train_data
-test_data = imputed_test_data
+# train_data = imputed_train_data
+# test_data = imputed_test_data
 
 # Process both training and test data
 mean_target_by_round = compute_mean_target_by_round(train_data)
