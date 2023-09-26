@@ -110,6 +110,10 @@ def process_data(data, mean_target_by_round=None):
         "Status": "Province",
         "Status": "Tenure",
         "Sa_citizen": "Additional_lang",
+        # "Geography": "Schoolquintile",
+        # "Province": "Schoolquintile",
+        # "Diploma": "Tenure",
+        # "Degree": "Tenure",
     }
     for x in interactions:
         province_dummies = pd.get_dummies(data[x], prefix=x)
@@ -122,6 +126,37 @@ def process_data(data, mean_target_by_round=None):
                 data[interaction_col_name] = (
                     province_dummies[province_col] * geography_dummies[geo_col]
                 )
+
+
+# TOO SLOW 
+
+#     interactionOne = [
+#     "Round", "Status", "Tenure", "Geography", "Province",
+#     "Matric", "Degree", "Diploma", "Schoolquintile",
+#     "Math", "Mathlit", "Additional_lang", "Home_lang",
+#     "Science", "Female", "Sa_citizen", "Birthyear", 
+#     "Birthmonth", "Target"
+# ]
+#     interactionTwo = [
+#     "Round", "Status", "Tenure", "Geography", "Province",
+#     "Matric", "Degree", "Diploma", "Schoolquintile",
+#     "Math", "Mathlit", "Additional_lang", "Home_lang",
+#     "Science", "Female", "Sa_citizen", "Birthyear", 
+#     "Birthmonth", "Target"
+# ]
+
+#     for y in interactionOne:
+#         for x in interactionTwo:
+#             province_dummies = pd.get_dummies(data[y], prefix=y)
+#             geography_dummies = pd.get_dummies(data[x], prefix=x)
+
+#             # Create interaction terms
+#             for province_col in province_dummies.columns:
+#                 for geo_col in geography_dummies.columns:
+#                     interaction_col_name = f"{province_col}_x_{geo_col}"
+#                     data[interaction_col_name] = (
+#                         province_dummies[province_col] * geography_dummies[geo_col]
+#                     )
 
     # Calculate age
     data["Age"] = data.apply(calculate_exact_age, axis=1)
