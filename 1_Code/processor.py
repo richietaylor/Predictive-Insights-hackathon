@@ -116,6 +116,7 @@ def process_data(data, mean_target_by_round=None):
         # "Degree": "Tenure",
     }
     for x in interactions:
+        print(x, "starting")
         province_dummies = pd.get_dummies(data[x], prefix=x)
         geography_dummies = pd.get_dummies(data[interactions[x]], prefix=interactions[x])
 
