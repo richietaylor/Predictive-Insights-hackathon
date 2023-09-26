@@ -104,17 +104,22 @@ def process_data(data, mean_target_by_round=None):
     data["Survey_month"] = data["Survey_date"].dt.month
     data["Survey_day"] = data["Survey_date"].dt.day
 
-    # One-hot encode "Province" and "Geography"
-    province_dummies = pd.get_dummies(data["Province"], prefix="Province")
-    geography_dummies = pd.get_dummies(data["Geography"], prefix="Geography")
+    interactions = {
+        "Province": "Geography",
+        "Geography": "Status",
+        "Status": "Province"
+    }
+    for x in interactions:
+        province_dummies = pd.get_dummies(data[x], prefix=x)
+        geography_dummies = pd.get_dummies(data[interactions[x]], prefix=interactions[x])
 
-    # Create interaction terms
-    for province_col in province_dummies.columns:
-        for geo_col in geography_dummies.columns:
-            interaction_col_name = f"{province_col}_x_{geo_col}"
-            data[interaction_col_name] = (
-                province_dummies[province_col] * geography_dummies[geo_col]
-            )
+        # Create interaction terms
+        for province_col in province_dummies.columns:
+            for geo_col in geography_dummies.columns:
+                interaction_col_name = f"{province_col}_x_{geo_col}"
+                data[interaction_col_name] = (
+                    province_dummies[province_col] * geography_dummies[geo_col]
+                )
 
     # Calculate age
     data["Age"] = data.apply(calculate_exact_age, axis=1)
