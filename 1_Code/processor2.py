@@ -34,6 +34,13 @@ def set_education_quality(row):
         "education_quality", 0
     )  # default value if 'education_quality' doesn't exist
 
+def set_education_quality(row):
+    if row["Matric"] == 1:
+        return 1 if row["Schoolquintile"] >= 4 else 0
+    return row.get(
+        "education_quality", 0
+    )  # default value if 'education_quality' doesn't exist
+
 def process_data(data: pd.DataFrame):
     # Convert "Survey_date" to datetime and extract features
     data["Survey_date"] = pd.to_datetime(data["Survey_date"])
@@ -43,12 +50,14 @@ def process_data(data: pd.DataFrame):
 
     data.drop(columns="Survey_date", inplace=True)
 
-    data["Schoolquintile"] = data.apply(
-        lambda row: set_schoolquintile_by_province(
-            row, mean_schoolquintile_by_province
-        ),
-        axis=1,
-    )
+    # data["Schoolquintile"] = data.apply(
+    #     lambda row: set_schoolquintile_by_province(
+    #         row, mean_schoolquintile_by_province
+    #     ),
+    #     axis=1,
+    # )
+
+    # data = f.bin_column(data=data,column_name='Tenure',[])
     
 
     interactions = {
@@ -153,7 +162,7 @@ def process_data(data: pd.DataFrame):
 train_data = pd.read_csv("TrainTest.csv")
 test_proc = pd.read_csv("TestTest.csv")
 
-train_data, test_proc = f.impute_column_with_regressor(train_data, test_proc, "Tenure",excluded_columns=['Target'],method='knn')
+# train_data, test_proc = f.impute_column_with_regressor(train_data, test_proc, "Tenure",excluded_columns=['Target'],method='knn')
 mean_schoolquintile_by_province = f.compute_aggregated_target_by_group(
     train_data, "Province", "Schoolquintile", "mode", train_data
 )
@@ -180,27 +189,27 @@ numerical_columns.remove("Target")
 categorical_columns.remove("Person_id")
 
 # For numerical columns, fill missing values with the minimum
-for col in numerical_columns:
-    min_value = train_proc[col].min()
-    train_proc[col].fillna(min_value, inplace=True)
-    test_proc[col].fillna(min_value, inplace=True)
+# for col in numerical_columns:
+#     min_value = train_proc[col].min()
+#     train_proc[col].fillna(min_value, inplace=True)
+#     test_proc[col].fillna(min_value, inplace=True)
 
-# For categorical columns, fill missing values with the mode
-for col in categorical_columns:
-    mode_value = train_proc[col].mode()[0]
-    train_proc[col].fillna(mode_value, inplace=True)
-    test_proc[col].fillna(mode_value, inplace=True)
+# # For categorical columns, fill missing values with the mode
+# for col in categorical_columns:
+#     mode_value = train_proc[col].mode()[0]
+#     train_proc[col].fillna(mode_value, inplace=True)
+#     test_proc[col].fillna(mode_value, inplace=True)
 
 
-# Feature selection
-dropped_features = f.drop_features_using_elasticnet(
-    train_proc.drop(columns=["Person_id"]), "Target"
-)
-print(dropped_features)
+# # Feature selection
+# dropped_features = f.drop_features_using_elasticnet(
+#     train_proc.drop(columns=["Person_id"]), "Target"
+# )
+# print(dropped_features)
 
-# Assuming you will do the same for the test set:
-test_proc.drop(columns=dropped_features, inplace=True)
-train_proc.drop(columns=dropped_features, inplace=True)
+# # Assuming you will do the same for the test set:
+# test_proc.drop(columns=dropped_features, inplace=True)
+# train_proc.drop(columns=dropped_features, inplace=True)
 
 
 # print(f.compute_vif(train_proc, "Target"))
