@@ -199,6 +199,35 @@ def create_interactions(data, interactions):
 
     return data
 
+def create_single_interaction(data, col_encode, col_multiply):
+    """
+    Creates interaction terms between a one-hot encoded column and another column.
+
+    Parameters:
+    - data: DataFrame
+    - col_encode: Column name to be one-hot encoded.
+    - col_multiply: Column name to be multiplied with the encoded columns.
+
+    Returns: DataFrame with added interaction terms.
+    """
+    
+    # Check number of unique values in the col_encode
+    if len(data[col_encode].unique()) > 10:
+        print(
+            f"Skipping interaction for {col_encode} and {col_multiply} due to high cardinality in {col_encode}."
+        )
+        return data
+
+    # One-hot encode the col_encode
+    col_encode_dummies = pd.get_dummies(data[col_encode], prefix=col_encode)
+
+    # Multiply one-hot encoded columns with col_multiply
+    for col_encode_dummy in col_encode_dummies.columns:
+        interaction_col_name = f"{col_encode_dummy}_x_{col_multiply}"
+        data[interaction_col_name] = col_encode_dummies[col_encode_dummy] * data[col_multiply]
+
+    return data
+
 def impute_column_with_regressor(
     train_data, test_data, column_to_impute, excluded_columns=[], 
     method='regressor', regressor=None, n_neighbors=5
