@@ -1,15 +1,23 @@
 from sklearn.discriminant_analysis import StandardScaler
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, roc_auc_score
 from sklearn.preprocessing import LabelEncoder, OrdinalEncoder
 import pandas as pd
 import xgboost
 from sklearn.linear_model import (
     ElasticNetCV,
 )
+from sklearn.impute import KNNImputer
+
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 from sklearn.model_selection import train_test_split, cross_val_predict
 import numpy as np
+from sklearn.feature_selection import (VarianceThreshold, SelectKBest, 
+                                       f_classif, f_regression, mutual_info_classif, mutual_info_regression)
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.linear_model import LassoCV
+from mlxtend.feature_selection import SequentialFeatureSelector
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 def get_common_features(train_data, test_data, mode="common", target_column=None):
     """
@@ -192,57 +200,79 @@ def create_interactions(data, interactions):
     return data
 
 def impute_column_with_regressor(
-    train_data, test_data, column_to_impute, excluded_columns=[], regressor=None
+    train_data, test_data, column_to_impute, excluded_columns=[], 
+    method='regressor', regressor=None, n_neighbors=5
 ):
     """
-    Imputes missing values of a specified column using a regressor (default is XGBoost).
+    Imputes missing values of a specified column using a regressor or KNN.
 
     Parameters:
     - train_data: Training data DataFrame.
     - test_data: Testing data DataFrame.
     - column_to_impute: The column for which missing values need to be imputed.
-    - excluded_columns: List of columns to be excluded from the feature set for training the imputer.
-    - regressor: Regressor instance. If None, default XGBoost regressor will be used.
+    - excluded_columns: List of columns to be excluded from the feature set for imputation.
+    - method: Method for imputation ('regressor' or 'knn').
+    - regressor: Regressor instance. If None and method is 'regressor', default XGBoost regressor will be used.
+    - n_neighbors: Number of neighbors to use for KNN imputation.
 
     Returns:
     - Imputed train_data and test_data DataFrames.
     """
+    
+    # Dummy function for get_common_features, you might have a different implementation
+    def get_common_features(train_data, test_data, mode="dropped"):
+        return []
+    
     # Features for prediction (excluding non-numeric columns and excluded columns)
-
     columns_to_drop = get_common_features(train_data, test_data, "dropped")
-    print(columns_to_drop)
-
     features = (
         train_data.drop(columns=[column_to_impute] + excluded_columns + columns_to_drop)
         .select_dtypes(include=["int64", "float64"])
         .columns
     )
 
-    # If no regressor provided, initialize the default one
-    if regressor is None:
-        regressor = xgboost.XGBRegressor(
-            n_estimators=100, objective="reg:squarederror", random_state=42
-        )
+    if method == 'regressor':
+        # If no regressor provided, initialize the default one
+        if regressor is None:
+            import xgboost
+            regressor = xgboost.XGBRegressor(
+                n_estimators=100, objective="reg:squarederror", random_state=42
+            )
 
-    # Impute train_data
-    data_known_train = train_data.dropna(subset=[column_to_impute])
-    data_unknown_train = train_data[train_data[column_to_impute].isnull()]
-    if not data_unknown_train.empty:
-        regressor.fit(data_known_train[features], data_known_train[column_to_impute])
-        predicted_values_train = regressor.predict(data_unknown_train[features])
-        data_unknown_train.loc[:, column_to_impute] = predicted_values_train
-        train_data = pd.concat(
-            [data_known_train, data_unknown_train], axis=0
-        ).sort_index()
+        # Impute train_data
+        data_known_train = train_data.dropna(subset=[column_to_impute])
+        data_unknown_train = train_data[train_data[column_to_impute].isnull()]
+        if not data_unknown_train.empty:
+            regressor.fit(data_known_train[features], data_known_train[column_to_impute])
+            predicted_values_train = regressor.predict(data_unknown_train[features])
+            data_unknown_train.loc[:, column_to_impute] = predicted_values_train
+            train_data = pd.concat(
+                [data_known_train, data_unknown_train], axis=0
+            ).sort_index()
 
-    # Impute test_data using the regressor trained on the entire train_data
-    data_known_test = test_data.dropna(subset=[column_to_impute])
-    data_unknown_test = test_data[test_data[column_to_impute].isnull()]
-    if not data_unknown_test.empty:
-        regressor.fit(train_data[features], train_data[column_to_impute])
-        predicted_values_test = regressor.predict(data_unknown_test[features])
-        data_unknown_test.loc[:, column_to_impute] = predicted_values_test
-        test_data = pd.concat([data_known_test, data_unknown_test], axis=0).sort_index()
+        # Impute test_data using the regressor trained on the entire train_data
+        data_known_test = test_data.dropna(subset=[column_to_impute])
+        data_unknown_test = test_data[test_data[column_to_impute].isnull()]
+        if not data_unknown_test.empty:
+            regressor.fit(train_data[features], train_data[column_to_impute])
+            predicted_values_test = regressor.predict(data_unknown_test[features])
+            data_unknown_test.loc[:, column_to_impute] = predicted_values_test
+            test_data = pd.concat([data_known_test, data_unknown_test], axis=0).sort_index()
+
+    elif method == 'knn':
+        imputer = KNNImputer(n_neighbors=n_neighbors)
+        
+        # Prepare data for imputation
+        train_for_imputation = train_data[features].copy()
+        test_for_imputation = test_data[features].copy()
+        
+        # Fit imputer on known train data and transform both train and test data
+        train_imputed = imputer.fit_transform(train_for_imputation)
+        test_imputed = imputer.transform(test_for_imputation)
+        
+        # Update the original dataframes with the imputed values
+        train_data.loc[:, features] = train_imputed
+        test_data.loc[:, features] = test_imputed
 
     return train_data, test_data
 
@@ -443,3 +473,132 @@ def print_dataframe_info(df):
     # Display basic statistics
     print("Basic Statistics:")
     print(df.describe())
+
+def enhanced_feature_selection_drop(df, target_column, problem_type="classification", method="variance_threshold", k_features=10):
+    """
+    Enhanced feature selection method.
+    
+    Parameters:
+    - df: DataFrame with features and target.
+    - target_column: Name of the target column in df.
+    - problem_type: "classification" or "regression"
+    - method: The feature selection method to use. Choices are:
+              "variance_threshold", "univariate_test", "mutual_information", 
+              "correlation_coefficient", "tree_importance", "lasso".
+    - k_features: Number of top features to select for some methods.
+    
+    Returns:
+    - List of dropped feature names.
+    """
+    X = df.drop(target_column, axis=1)
+    y = df[target_column]
+    
+    # All features
+    all_features = set(X.columns)
+    
+    # Variance Threshold
+    if method == "variance_threshold":
+        selector = VarianceThreshold()
+        selector.fit(X)
+        kept_features = X.columns[selector.get_support()]
+        return list(all_features - set(kept_features))
+
+    # Univariate Statistical Tests
+    if method == "univariate_test":
+        if problem_type == "classification":
+            test_func = f_classif
+        else:
+            test_func = f_regression
+        selector = SelectKBest(test_func, k=k_features).fit(X, y)
+        kept_features = X.columns[selector.get_support()]
+        return list(all_features - set(kept_features))
+
+    # Mutual Information
+    if method == "mutual_information":
+        if problem_type == "classification":
+            mi_func = mutual_info_classif
+        else:
+            mi_func = mutual_info_regression
+        selector = SelectKBest(mi_func, k=k_features).fit(X, y)
+        kept_features = X.columns[selector.get_support()]
+        return list(all_features - set(kept_features))
+
+    # Correlation Coefficient
+    if method == "correlation_coefficient":
+        corrs = X.corrwith(y)
+        kept_features = corrs.nlargest(k_features).index
+        return list(all_features - set(kept_features))
+
+    # Feature Importance from Tree-based Models
+    if method == "tree_importance":
+        if problem_type == "classification":
+            model = RandomForestClassifier(n_estimators=100, random_state=42)
+        else:
+            model = RandomForestRegressor(n_estimators=100, random_state=42)
+        model.fit(X, y)
+        importances = model.feature_importances_
+        top_indices = np.argsort(importances)[-k_features:]
+        kept_features = X.columns[top_indices]
+        return list(all_features - set(kept_features))
+
+    # Lasso for Feature Selection
+    if method == "lasso":
+        lasso = LassoCV(cv=5)
+        lasso.fit(X, y)
+        kept_features = X.columns[lasso.coef_ != 0]
+        return list(all_features - set(kept_features))
+
+    return []
+
+def evaluate_and_compare_models(base_learners, X, y, n_splits=5):
+    from sklearn.model_selection import StratifiedKFold
+    
+    # Initialize StratifiedKFold
+    strat_kfold = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
+    
+    # Store aggregated predictions for all folds
+    aggregated_predictions = {name: [] for name, _ in base_learners}
+
+    # Store performance metrics for all models
+    performance_metrics = {
+        'Model': [],
+        'AUC-ROC': [],
+        'Accuracy': [],
+        'Precision': [],
+        'Recall': [],
+        'F1 Score': []
+    }
+
+    # Iterate over each fold and train/evaluate models
+    for train_index, val_index in strat_kfold.split(X, y):
+        X_train, X_val = X.iloc[train_index], X.iloc[val_index]
+        y_train, y_val = y.iloc[train_index], y.iloc[val_index]
+
+        for name, model in base_learners:
+            model.fit(X_train, y_train)
+            y_pred = model.predict(X_val)
+            y_pred_proba = model.predict_proba(X_val)[:, 1]
+
+            # Store metrics
+            performance_metrics['Model'].append(name)
+            performance_metrics['AUC-ROC'].append(roc_auc_score(y_val, y_pred_proba))
+            performance_metrics['Accuracy'].append(accuracy_score(y_val, y_pred))
+            performance_metrics['Precision'].append(precision_score(y_val, y_pred))
+            performance_metrics['Recall'].append(recall_score(y_val, y_pred))
+            performance_metrics['F1 Score'].append(f1_score(y_val, y_pred))
+
+            # Aggregate predictions
+            aggregated_predictions[name].extend(y_pred_proba)
+
+    # Convert aggregated predictions to DataFrame
+    df_aggregated_predictions = pd.DataFrame(aggregated_predictions)
+
+    # Compute the correlation matrix
+    corr_matrix = df_aggregated_predictions.corr()
+    print("Model Similarity (Pearson Correlation Coefficients):")
+    print(corr_matrix)
+    
+    # Convert performance metrics to DataFrame for better visualization
+    df_performance = pd.DataFrame(performance_metrics)
+    print("\nModel Performance Metrics (averaged over k-folds):")
+    print(df_performance.groupby("Model").mean())

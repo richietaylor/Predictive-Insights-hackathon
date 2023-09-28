@@ -16,14 +16,15 @@ y_train = train_data['Target']
 
 # Creating the XGBoost model with parameters
 xgboost_model = xgb.XGBClassifier(
-    objective='count:poisson',
+    objective='binary:logistic',
     n_estimators=300,
     learning_rate=0.05,
     max_depth=5,
     subsample=0.8,
     colsample_bytree=0.8,
     gamma=0.1,
-    random_state=42
+    random_state=42,
+    eval_metric='auc'
 )
 
 # Performing 5-fold cross-validation
@@ -90,10 +91,7 @@ def save_predictions(predictions, data, file_path):
     # Save the updated DataFrame back to the file
     predictions_df.to_csv(file_path, index=False)
 
-# For training data
-y_train_prob_pred_lgb = xgboost_model.predict_proba(X_train)[:, 1]
-save_predictions(y_train_prob_pred_lgb, train_data, 'processed_train_advanced.csv')
 
 # For test data
 y_test_prob_pred_lgb = xgboost_model.predict_proba(test_data_processed)[:, 1]
-save_predictions(y_test_prob_pred_lgb, test_data, 'processed_test_advanced.csv')
+save_predictions(y_test_prob_pred_lgb, test_data, 'xgboost.csv')

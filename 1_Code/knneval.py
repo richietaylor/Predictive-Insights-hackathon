@@ -18,7 +18,7 @@ neighbors_range = list(range(1, 51))  # check from 1 to 50 neighbors
 cross_val_scores = []
 
 for n in neighbors_range:
-    knn_model = KNeighborsClassifier(n_neighbors=n)
+    knn_model = KNeighborsClassifier(n_neighbors=n,weights='distance')
     scores = cross_val_score(knn_model, X_train, y_train, cv=5)
     cross_val_scores.append(scores.mean())
 

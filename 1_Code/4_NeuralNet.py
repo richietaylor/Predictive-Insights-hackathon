@@ -90,17 +90,17 @@ class NeuralNetwork(nn.Module):
     def __init__(self, input_dim):
         super(NeuralNetwork, self).__init__()
         self.seq = nn.Sequential(
-            nn.Linear(input_dim, 50),
-            nn.BatchNorm1d(50),
-            nn.LeakyReLU(),
-            nn.Dropout(0.5),
-
-            nn.Linear(50, 10),
-            nn.BatchNorm1d(10),
+            nn.Linear(input_dim, 100),
+            nn.BatchNorm1d(100),
             nn.ReLU(),
             nn.Dropout(0.5),
 
-            nn.Linear(10, 1),
+            nn.Linear(100, 50),
+            nn.BatchNorm1d(50),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+
+            nn.Linear(50, 1),
             nn.Sigmoid()
         )
 
@@ -111,7 +111,7 @@ model = NeuralNetwork(num_features)
 
 # 3. Training Loop
 criterion = nn.BCELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.0001)
+optimizer = optim.Adam(model.parameters(), lr=0.0001,weight_decay=0.01)
 patience = 10
 best_val_loss = float('inf')
 counter = 0
@@ -151,6 +151,12 @@ for epoch in range(epochs):
 test_data = pd.read_csv("processed_test.csv")
 X_test = test_data.drop(columns=["Person_id"]).values
 X_test_normalized = scaler.transform(X_test)
+
+# Retrain base models on the entire training dataset
+rf.fit(X_train_normalized, y_resampled)
+xgb.fit(X_train_normalized, y_resampled)
+lgbm.fit(X_train_normalized, y_resampled)
+
 
 # Don't forget to also adjust the augmented input for the test set:
 test_rf = rf.predict_proba(X_test_normalized)[:, 1]

@@ -2,21 +2,22 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 import functions as f
 
+
 def set_schoolquintile_by_province(row, mapping):
     """
     Sets the value of Schoolquintile based on the mode of the Province.
-    
+
     Parameters:
     - row: Row of the DataFrame.
     - mapping: Dictionary with Province as key and its corresponding mode of Schoolquintile as value.
-    
+
     Returns:
     - Updated value for Schoolquintile.
     """
-    if row['Matric'] not in [0, 1]:
-        return int(mapping[row['Province']])
+    if row["Matric"] in [0, 1]:
+        return int(mapping[row["Province"]])
     else:
-        return row['Schoolquintile']
+        return -1
 
 def impute_maths_combined(row):
     if row["Math"]:
@@ -33,16 +34,22 @@ def set_education_quality(row):
         "education_quality", 0
     )  # default value if 'education_quality' doesn't exist
 
-def process_data(data:pd.DataFrame):
+def process_data(data: pd.DataFrame):
     # Convert "Survey_date" to datetime and extract features
     data["Survey_date"] = pd.to_datetime(data["Survey_date"])
     data["Survey_year"] = data["Survey_date"].dt.year
     data["Survey_month"] = data["Survey_date"].dt.month
     data["Survey_day"] = data["Survey_date"].dt.day
 
-    data.drop(columns="Survey_date",inplace=True)
+    data.drop(columns="Survey_date", inplace=True)
 
-    data["Schoolquintile"] = data.apply(lambda row: set_schoolquintile_by_province(row, mean_schoolquintile_by_province), axis=1)
+    data["Schoolquintile"] = data.apply(
+        lambda row: set_schoolquintile_by_province(
+            row, mean_schoolquintile_by_province
+        ),
+        axis=1,
+    )
+    
 
     interactions = {
         "Province": "Geography",
@@ -64,7 +71,6 @@ def process_data(data:pd.DataFrame):
     data["is_senior"] = (data["Age"] > 45).astype(int)
     data["Age_first_employment"] = data["Age"] - data["Tenure"] / 365.25
 
-
     # Transform percentage range columns
     percentage_columns = ["Math", "Mathlit", "Additional_lang", "Home_lang", "Science"]
     percentage_mapping = {
@@ -78,7 +84,7 @@ def process_data(data:pd.DataFrame):
     }
     data = f.transform_percentage_columns(data, percentage_columns, percentage_mapping)
 
-    data['Maths_combined'] = data.apply(impute_maths_combined, axis=1)
+    data["Maths_combined"] = data.apply(impute_maths_combined, axis=1)
     data["Subjects_passed"] = data[percentage_columns].apply(
         lambda x: sum(val >= 5 for val in x), axis=1
     )
@@ -101,9 +107,8 @@ def process_data(data:pd.DataFrame):
         lambda x: -1 if x == "unemployed" else 1
     )
     data["Tenure"] = data.apply(
-    lambda row: 0 if row["Status"] == "studying" else row["Tenure"],
-    axis=1
-)
+        lambda row: 0 if row["Status"] == "studying" else row["Tenure"], axis=1
+    )
     # Calculate the exposure based on subjects
     data["Exposure"] = data[percentage_columns].apply(
         lambda x: sum((val >= 0) * 2 - pd.isna(val) for val in x), axis=1
@@ -128,15 +133,18 @@ def process_data(data:pd.DataFrame):
     # Modify the Tenure value based on the Status
     data["Tenure_Status"] = data.apply(
         lambda row: (
-            row["Tenure"] ** 2 if row["Status_mapped"] == -1 else row["Tenure"]
+            row["Tenure"]*-1 if row["Status_mapped"] == -1 else row["Tenure"]
         )
         * row["Status_mapped"],
         axis=1,
     )
-    
+    # Modify the Tenure value based on the Status
+    data["Tenure^2_Status"] = data.apply(
+        lambda row: (
+            row["Tenure"]**2*-1 if row["Status_mapped"] == -1 else row["Tenure"]**2),
+        axis=1)
 
     # data["Math_Science_interaction"] = data["Math"] * data["Science"]
-
 
     return data
 
@@ -145,8 +153,10 @@ def process_data(data:pd.DataFrame):
 train_data = pd.read_csv("TrainTest.csv")
 test_proc = pd.read_csv("TestTest.csv")
 
-# train_data, test_proc = f.impute_column_with_regressor(train_data, test_proc, "Tenure",excluded_columns=['Target'])
-mean_schoolquintile_by_province = f.compute_aggregated_target_by_group(train_data,'Province','Schoolquintile','mode',train_data)
+train_data, test_proc = f.impute_column_with_regressor(train_data, test_proc, "Tenure",excluded_columns=['Target'],method='knn')
+mean_schoolquintile_by_province = f.compute_aggregated_target_by_group(
+    train_data, "Province", "Schoolquintile", "mode", train_data
+)
 
 
 # Process the data
@@ -156,6 +166,8 @@ test_proc = process_data(test_proc)
 mean_target_by_round = f.compute_aggregated_target_by_group(
     train_proc, "Round", "Target", "mean"
 )
+
+# f.print_dataframe_info(train_proc)
 
 train_proc["Round"] = train_proc["Round"].map(mean_target_by_round)
 test_proc["Round"] = test_proc["Round"].map(mean_target_by_round)
@@ -181,14 +193,17 @@ for col in categorical_columns:
 
 
 # Feature selection
-dropped_features = f.drop_features_using_elasticnet(train_proc.drop(columns=['Person_id']),'Target')
+dropped_features = f.drop_features_using_elasticnet(
+    train_proc.drop(columns=["Person_id"]), "Target"
+)
+print(dropped_features)
 
 # Assuming you will do the same for the test set:
-test_proc.drop(columns=dropped_features,inplace=True)
-train_proc.drop(columns=dropped_features,inplace=True)
+test_proc.drop(columns=dropped_features, inplace=True)
+train_proc.drop(columns=dropped_features, inplace=True)
 
 
-print(f.compute_vif(train_proc, "Target"))
+# print(f.compute_vif(train_proc, "Target"))
 
 # f.print_dataframe_info()
 
