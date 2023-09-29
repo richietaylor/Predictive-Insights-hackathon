@@ -34,6 +34,13 @@ def set_education_quality(row):
         "education_quality", 0
     )  # default value if 'education_quality' doesn't exist
 
+def set_education_quality(row):
+    if row["Matric"] == 1:
+        return 1 if row["Schoolquintile"] >= 4 else 0
+    return row.get(
+        "education_quality", 0
+    )  # default value if 'education_quality' doesn't exist
+
 def process_data(data: pd.DataFrame):
     # Convert "Survey_date" to datetime and extract features
     data["Survey_date"] = pd.to_datetime(data["Survey_date"])
@@ -43,47 +50,41 @@ def process_data(data: pd.DataFrame):
 
     data.drop(columns="Survey_date", inplace=True)
 
-    data["Schoolquintile"] = data.apply(
-        lambda row: set_schoolquintile_by_province(
-            row, mean_schoolquintile_by_province
-        ),
-        axis=1,
-    )
+    # data["Schoolquintile"] = data.apply(
+    #     lambda row: set_schoolquintile_by_province(
+    #         row, mean_school_quintile_by_province
+    #     ),
+    #     axis=1,
+    # )
+
+    # data = f.bin_column(data=data,column_name='Tenure',[])
     
-    # #add tenure when it is binned
-    # interactionOne = [
-    #     "Round", "Status", "Geography", "Province",
-    #     "Matric", "Degree", "Diploma", "Schoolquintile",
-    #     "Math", "Mathlit", "Additional_lang", "Home_lang",
-    #     "Science", "Female", "Sa_citizen", "Birthyear", 
-    #     "Birthmonth", "Target"
-    # ]
-    # interactionTwo = [
-    #     "Round", "Status", "Geography", "Province",
-    #     "Matric", "Degree", "Diploma", "Schoolquintile",
-    #     "Math", "Mathlit", "Additional_lang", "Home_lang",
-    #     "Science", "Female", "Sa_citizen", "Birthyear", 
-    #     "Birthmonth", "Target"
-    # ]
 
-    # for x in interactionOne:
-    #     for y in interactionTwo:
-    #         data = f.create_interactions(data, zip(interactionOne, interactionTwo))
+    interactions = {
+        # "Province": "Geography",
+        # "Geography": "Status",
+        "Status": "Province",
+        "Female":"Status",
+        # "Geography": "Schoolquintile",
+        # "Province": "Schoolquintile",
+        # "Status": "Schoolquintile",
+        # "Diploma": "Tenure",
+        # "Degree": "Province",
+    }
 
-    # interactions = {
-    #     "Province": "Geography",
-    #     "Geography": "Status",
-    #     "Status": "Province",
-    #     "Geography": "Schoolquintile",
-    #     "Province": "Schoolquintile",
-    #     # "Status": "Schoolquintile",
-    #     # "Diploma": "Tenure",
-    #     # "Degree": "Tenure",
-    # }
-    # data = f.create_interactions(data, interactions)
+    # data = f.create_single_interaction(data,'Matric','Tenure')
+    # data = f.create_single_interaction(data,'Degree','Tenure')
+    # data = f.create_single_interaction(data,'Diploma','Tenure')
 
+    # data = f.create_single_interaction(data,'Province','Matric')
+
+    # data = f.create_single_interaction(data,'Status','Tenure')
+
+    data = f.create_interactions(data,interactions=interactions)
     # Calculate age
     data["Age"] = data.apply(f.calculate_exact_age, axis=1)
+    # data = f.create_single_interaction(data,'Status','Age')
+
     # 5. Age Groups
     data["is_young_adult"] = (data["Age"] >= 18) & (data["Age"] <= 25).astype(int)
     data["is_middle_aged"] = (data["Age"] > 25) & (data["Age"] <= 45).astype(int)
@@ -104,6 +105,12 @@ def process_data(data: pd.DataFrame):
     data = f.transform_percentage_columns(data, percentage_columns, percentage_mapping)
 
     data["Maths_combined"] = data.apply(impute_maths_combined, axis=1)
+    
+    data["Mathadded"] = data["Math"] + 6
+    data["Maths_combined"] = f.flexible_add(data,'Mathlit','Mathadded')
+    
+    data.drop(columns=['Mathadded'],inplace=True)
+
     data["Subjects_passed"] = data[percentage_columns].apply(
         lambda x: sum(val >= 5 for val in x), axis=1
     )
@@ -116,7 +123,7 @@ def process_data(data: pd.DataFrame):
         ["Math", "Science", "Additional_lang", "Home_lang"]
     ].apply(lambda x: sum(val >= 5 for val in x) - sum(val <= 1 for val in x), axis=1)
     # 6. School and Education Interactions
-    for subject in ["Math", "Science"]:
+    for subject in ["Maths_combined"]:
         data[f"{subject}_schoolquintile"] = data[subject] * data["Schoolquintile"]
 
     data["downturn"] = data["Round"].apply(lambda x: 1 if x in [1, 3] else 0)
@@ -164,32 +171,45 @@ def process_data(data: pd.DataFrame):
         axis=1)
 
     # data["Math_Science_interaction"] = data["Math"] * data["Science"]
-
     return data
 
 
 # Load the datasets
 train_data = pd.read_csv("TrainTest.csv")
-test_proc = pd.read_csv("TestTest.csv")
+test_data = pd.read_csv("TestTest.csv")
 
-train_data, test_proc = f.impute_column_with_regressor(train_data, test_proc, "Tenure",excluded_columns=['Target'],method='knn')
-mean_schoolquintile_by_province = f.compute_aggregated_target_by_group(
-    train_data, "Province", "Schoolquintile", "mode", train_data
-)
 
+
+train_data, test_data = f.impute_column_with_regressor(train_data, test_data, "Tenure",excluded_columns=['Target'],method='knn',n_neighbors=5)
+# train_data = f.impute_missing_value(data=train_data,column='Tenure',strategy='mode')
+# test_data = f.impute_missing_value(data=test_data,column='Tenure',strategy='mode')
+
+# mean_schoolquintile_by_province = f.compute_aggregated_target_by_group(
+#     train_data, "Province", "Schoolquintile", "mode", train_data
+# )
+
+mean_school_quintile_by_province = f.aggregate_by_group(train_data,'Schoolquintile','mean',['Province','Geography'],second_data=test_data)
+print(mean_school_quintile_by_province)
+
+train_data,test_data = f.set_value_by_group(train_data,'Schoolquintile',strategy='mean',group_columns=['Province','Geography'],second_data=test_data)
+
+# data = f.create_and_select_interactions(train_data,'Target',[('Status','Geography')])
 
 # Process the data
 train_proc = process_data(train_data)
-test_proc = process_data(test_proc)
+test_proc = process_data(test_data)
 
-mean_target_by_round = f.compute_aggregated_target_by_group(
-    train_proc, "Round", "Target", "mean"
-)
+
+# train_proc = f.apply_feature_hashing(train_proc,'Tenure',8)
+
+# mean_target_by_round = f.compute_aggregated_target_by_group(
+#     train_proc, "Round", "Target", "mean"
+# )
 
 # f.print_dataframe_info(train_proc)
 
-train_proc["Round"] = train_proc["Round"].map(mean_target_by_round)
-test_proc["Round"] = test_proc["Round"].map(mean_target_by_round)
+# train_proc["Round"] = train_proc["Round"].map(mean_target_by_round)
+# test_proc["Round"] = test_proc["Round"].map(mean_target_by_round)
 # Handling Missing Values
 numerical_columns = train_proc.select_dtypes(
     include=["int64", "float64"]

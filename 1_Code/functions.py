@@ -1,7 +1,8 @@
 from sklearn.discriminant_analysis import StandardScaler
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.feature_extraction import FeatureHasher
 from sklearn.metrics import mean_squared_error, roc_auc_score
-from sklearn.preprocessing import LabelEncoder, OrdinalEncoder
+from sklearn.preprocessing import LabelEncoder, OrdinalEncoder, PolynomialFeatures
 import pandas as pd
 import xgboost
 from sklearn.linear_model import (
@@ -130,42 +131,36 @@ def bin_column(data, column_name, bins, labels):
     )
     return data
 
-def compute_aggregated_target_by_group(
-    data, group_column, target_column, operation="mean", test_data=None
-):
+def aggregate_by_group(data, target_column, strategy="mean", group_columns=[], second_data=None):
     """
-    Computes the aggregated target by a given group column based on the specified operation.
+    Aggregate a target column based on the provided strategy and grouping columns.
 
     Parameters:
-    - data: DataFrame (Training data)
-    - group_column: Name of column to group by
-    - target_column: Name of target column
-    - operation: Aggregation operation ('min', 'max', 'mean', 'mode')
-    - test_data: Optional DataFrame (Test data)
+    - data: The primary DataFrame to process.
+    - target_column: The column to aggregate.
+    - strategy: The aggregation strategy; can be 'mean', 'mode', 'min', or 'max'.
+    - group_columns: The columns by which to group.
+    - second_data: An optional second DataFrame to consider for the aggregation.
 
-    Returns: Dictionary
+    Returns:
+    - A DataFrame with the aggregated data.
     """
-
-    if test_data is not None:
-        data = pd.concat([data, test_data], ignore_index=True)
-
-    if operation == "mean":
-        return data.groupby(group_column)[target_column].mean().to_dict()
-    elif operation == "min":
-        return data.groupby(group_column)[target_column].min().to_dict()
-    elif operation == "max":
-        return data.groupby(group_column)[target_column].max().to_dict()
-    elif operation == "mode":
-        # mode() returns a Series, so we get the first value
-        return (
-            data.groupby(group_column)[target_column]
-            .agg(lambda x: x.mode().iloc[0])
-            .to_dict()
-        )
+    
+    # If a second DataFrame is provided, concatenate it with the primary one
+    if second_data is not None:
+        data = pd.concat([data, second_data], ignore_index=True)
+    
+    if strategy == "mean":
+        return data.groupby(group_columns)[target_column].mean().reset_index()
+    elif strategy == "mode":
+        # Using first() to handle cases where mode returns multiple values
+        return data.groupby(group_columns)[target_column].apply(lambda x: x.mode().iloc[0]).reset_index()
+    elif strategy == "min":
+        return data.groupby(group_columns)[target_column].min().reset_index()
+    elif strategy == "max":
+        return data.groupby(group_columns)[target_column].max().reset_index()
     else:
-        raise ValueError(
-            f"Invalid operation: {operation}. Choose 'min', 'max', 'mean', or 'mode'."
-        )
+        raise ValueError(f"Invalid strategy: {strategy}. Choose from 'mean', 'mode', 'min', or 'max'.")
 
 def create_interactions(data, interactions):
     """
@@ -199,7 +194,7 @@ def create_interactions(data, interactions):
 
     return data
 
-def create_single_interaction(data, col_encode, col_multiply):
+def create_single_interaction(data: pd.DataFrame, col_encode, col_multiply):
     """
     Creates interaction terms between a one-hot encoded column and another column.
 
@@ -221,10 +216,10 @@ def create_single_interaction(data, col_encode, col_multiply):
     # One-hot encode the col_encode
     col_encode_dummies = pd.get_dummies(data[col_encode], prefix=col_encode)
 
-    # Multiply one-hot encoded columns with col_multiply
+    # Multiply one-hot encoded columns with col_multiply, ensuring NaN values in col_multiply don't get multiplied
     for col_encode_dummy in col_encode_dummies.columns:
         interaction_col_name = f"{col_encode_dummy}_x_{col_multiply}"
-        data[interaction_col_name] = col_encode_dummies[col_encode_dummy] * data[col_multiply]
+        data[interaction_col_name] = np.where(data[col_multiply].isna(), 1, col_encode_dummies[col_encode_dummy] * data[col_multiply])
 
     return data
 
@@ -631,3 +626,137 @@ def evaluate_and_compare_models(base_learners, X, y, n_splits=5):
     df_performance = pd.DataFrame(performance_metrics)
     print("\nModel Performance Metrics (averaged over k-folds):")
     print(df_performance.groupby("Model").mean())
+
+def create_and_select_interactions(data, target, interaction_pairs, degree=2, alpha=0.05):
+    """
+    Creates interaction terms and performs feature selection.
+
+    Parameters:
+    - data: DataFrame with original features.
+    - target: Series with the target variable.
+    - interaction_pairs: List of tuple pairs indicating which columns to interact.
+    - degree: Degree for polynomial features (only for continuous interactions).
+    - alpha: Regularization strength for Lasso.
+
+    Returns: DataFrame with selected interaction terms.
+    """
+    original_cols = data.columns.tolist()
+    
+    # Create interaction terms
+    for col1, col2 in interaction_pairs:
+        if data[col1].dtype == 'object' or data[col2].dtype == 'object':
+            # If at least one of the columns is categorical
+            cat_col, cont_col = (col1, col2) if data[col1].dtype == 'object' else (col2, col1)
+            cat_dummies = pd.get_dummies(data[cat_col], prefix=cat_col)
+            for cat_dummy in cat_dummies.columns:
+                data[f"{cat_dummy}_x_{cont_col}"] = cat_dummies[cat_dummy] * data[cont_col]
+        else:
+            # If both columns are continuous, create polynomial interactions
+            poly = PolynomialFeatures(degree, include_bias=False)
+            poly_data = poly.fit_transform(data[[col1, col2]])
+            cols = [f"{col1}_{col2}_deg{d}" for d in range(1, degree + 1)]
+            data = pd.concat([data, pd.DataFrame(poly_data, columns=cols, index=data.index)], axis=1)
+            
+    # Feature Selection using Lasso
+    X = data.drop(columns=original_cols)  # Only interaction terms
+    y = target
+
+    # Standardize features
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    # Lasso regression for feature selection
+    lasso = LassoCV(alphas=[alpha], cv=5, max_iter=10000)
+    lasso.fit(X_scaled, y)
+
+    # Select features where coefficient is non-zero
+    selected_features = X.columns[lasso.coef_ != 0].tolist()
+
+    # Retain only selected interaction terms
+    data = data[original_cols + selected_features]
+
+    return data
+
+def apply_feature_hashing(data, column, n_features=8):
+    """
+    Applies feature hashing to a specified column.
+
+    Parameters:
+    - data: DataFrame
+    - column: The name of the column to apply feature hashing.
+    - n_features: The number of features in the output. Default is 8.
+
+    Returns: DataFrame with the hashed features replacing the original column.
+    """
+    hasher = FeatureHasher(n_features=n_features, input_type='string')
+    hashed_features = hasher.transform(data[column].astype(str))
+    hashed_df = pd.DataFrame(hashed_features.toarray(), columns=[f"{column}_hash{idx}" for idx in range(n_features)])
+    
+    # Concatenate the hashed features with the original data and drop the original column
+    data = pd.concat([data, hashed_df], axis=1).drop(column, axis=1)
+    
+    return data
+
+def flexible_add(data, input1, input2):
+    """
+    Combine two inputs by adding their values together. The inputs can be two columns or one column and an integer.
+    
+    Parameters:
+    - data: DataFrame containing the columns (if column names are provided as inputs).
+    - input1, input2: Column names or an integer.
+
+    Returns:
+    - A Series containing the combined result.
+    """
+    
+    # Check if input1 is a column name or an integer
+    if isinstance(input1, str):
+        val1 = data[input1].fillna(0)
+    else:
+        val1 = input1
+
+    # Check if input2 is a column name or an integer
+    if isinstance(input2, str):
+        val2 = data[input2].fillna(0)
+    else:
+        val2 = input2
+
+    # Combine the values
+    combined = val1 + val2
+    
+    return combined
+
+def set_value_by_group(data, target_column, group_columns, strategy="mean", second_data=None):
+    """
+    Modify a target column in the primary and optional second DataFrame based on aggregation 
+    using provided strategy and grouping columns.
+
+    Parameters:
+    - data: The primary DataFrame to modify.
+    - target_column: The column to modify.
+    - group_columns: The columns by which to group.
+    - strategy: The aggregation strategy; can be 'mean', 'mode', 'min', or 'max'.
+    - second_data: An optional second DataFrame to modify based on the aggregation.
+
+    Returns:
+    - Tuple of Modified primary DataFrame and optionally the modified second DataFrame.
+    """
+    
+    # Aggregate the data
+    mapping_df = aggregate_by_group(data, target_column, strategy, group_columns, second_data)
+    mapping = mapping_df.set_index(group_columns)[target_column].to_dict()
+    
+    # Define the function to apply to each row
+    def modify_row(row):
+        key = tuple(row[col] for col in group_columns)
+        return mapping.get(key, row[target_column])
+
+    # Modify the target column for the primary DataFrame
+    data[target_column] = data.apply(modify_row, axis=1)
+    
+    if second_data is not None:
+        # Modify the target column for the second DataFrame
+        second_data[target_column] = second_data.apply(modify_row, axis=1)
+        return data, second_data
+
+    return data,

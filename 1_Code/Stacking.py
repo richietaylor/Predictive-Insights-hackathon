@@ -17,6 +17,12 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from functions import evaluate_and_compare_models
 import time
+from lightgbm import LGBMClassifier
+from catboost import CatBoostClassifier
+import random
+random.seed(420)
+
+
 start_time = time.time()
 # Paths to your data
 train_data_path = (
@@ -39,34 +45,42 @@ strat_kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 
 # Define base learners
 base_learners = [
-    # ('extra_trees', ExtraTreesClassifier(n_estimators=100, random_state=42,criterion='entropy',n_jobs=-1)),
+    # ('extra_trees', ExtraTreesClassifier(n_estimators=150, random_state=42,criterion='log_loss',n_jobs=-1)),
     ('xgb', XGBClassifier(objective='binary:logitraw',
-    n_estimators=200,
+    n_estimators=100,
     learning_rate=0.05,
     max_depth=5,
     subsample=0.8,
     colsample_bytree=0.8,
     gamma=0.1,
     random_state=42,n_jobs=-1)),
+    # ('lgb',LGBMClassifier(force_row_wise=True,objective='binary',boosting_type='dart')),
     # ('log_reg', LogisticRegression(max_iter=1000, random_state=42,C=1,penalty='l1',solver='liblinear')),
     # ('lda', LinearDiscriminantAnalysis(shrinkage=None, solver='svd')),
-    ('naive_bayes', GaussianNB()),
-    ('knn', KNeighborsClassifier(n_neighbors=6,weights='distance',n_jobs=-1)),
-    ('ada_boost', AdaBoostClassifier(n_estimators=200, random_state=42,)),
-    # ('random_forest', RandomForestClassifier(n_estimators=70, random_state=42, criterion='entropy',n_jobs=-1)),
+    # ('naive_bayes', GaussianNB()),
+    ('BernoulliNB', BernoulliNB()),
+    ('knn', KNeighborsClassifier(n_neighbors=9,weights='distance',n_jobs=-1)),
+    ('ada_boost', AdaBoostClassifier(n_estimators=100, random_state=42,)),
+    # ('random_forest', RandomForestClassifier(n_estimators=100, random_state=42, criterion='log_loss',n_jobs=-1)),
 
 ]
 
 evaluate_and_compare_models(base_learners=base_learners,X=X,y=y,n_splits=5)
 
 
+
 # Initialize Stacking Classifier
 stack_clf = StackingClassifier(
-    estimators=base_learners, final_estimator=LogisticRegression(), cv=5,verbose=2,
+    estimators=base_learners, final_estimator=LogisticRegression(penalty='l2'), cv=5,verbose=2,
 )
 
 # Train the stacking classifier
-stack_clf.fit(X, y)
+stack_clf.fit(X, y,)
+
+# Retrieve the weights of the final estimator
+weights = stack_clf.final_estimator_.coef_
+
+print(weights)
 
 # Predict on the test data
 stacked_predictions = stack_clf.predict_proba(test_data[common_features])[:, 1]
@@ -77,25 +91,6 @@ predictions_df = pd.DataFrame({
     'Probability_Unemployed': stacked_predictions
 })
 predictions_df.to_csv('stacked.csv', index=False)
-
-
-# accuracy_scorer = make_scorer(accuracy_score)
-# precision_scorer = make_scorer(precision_score)
-# recall_scorer = make_scorer(recall_score)
-# f1_scorer = make_scorer(f1_score)
-# log_loss_scorer = make_scorer(log_loss, needs_proba=True, greater_is_better=False)
-
-# Calculate scores using cross-validation
-# mean_accuracy = cross_val_score(stack_clf, X, y, cv=strat_kfold, scoring=accuracy_scorer, n_jobs=-1).mean()
-# mean_precision = cross_val_score(stack_clf, X, y, cv=strat_kfold, scoring=precision_scorer, n_jobs=-1).mean()
-# mean_recall = cross_val_score(stack_clf, X, y, cv=strat_kfold, scoring=recall_scorer, n_jobs=-1).mean()
-# mean_f1 = cross_val_score(stack_clf, X, y, cv=strat_kfold, scoring=f1_scorer, n_jobs=-1).mean()
-# mean_log_loss = cross_val_score(stack_clf, X, y, cv=strat_kfold, scoring=log_loss_scorer, n_jobs=-1).mean()
-# print(f"Mean Accuracy Score: {mean_accuracy:.4f}")
-# print(f"Mean Precision Score: {mean_precision:.4f}")
-# print(f"Mean Recall Score: {mean_recall:.4f}")
-# print(f"Mean F1 Score: {mean_f1:.4f}")
-# print(f"Mean Log Loss Score: {mean_log_loss:.4f}")
 
 # Calculate AUC-ROC using 5-fold cross-validation
 roc_auc_scorer = make_scorer(roc_auc_score, needs_proba=True)# Define additional scoring metrics
