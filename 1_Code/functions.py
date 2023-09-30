@@ -144,9 +144,7 @@ def bin_column(data, column_name, bins, labels):
     )
     return data
 
-def impute_column_with_knn(
-    train_data, test_data, column_to_impute, excluded_columns=[], n_neighbors=5
-):
+def impute_column_with_knn(train_data, test_data, column_to_impute, excluded_columns=[], n_neighbors=5):
     """
     Imputes missing values of a specified column using KNN.
 
@@ -162,23 +160,10 @@ def impute_column_with_knn(
     """
 
     # Features for prediction (excluding non-numeric columns and excluded columns)
-    features = (
-        train_data.drop(columns=[column_to_impute] + excluded_columns)
-        .select_dtypes(include=["int64", "float64"])
-        .columns
-    )
-    features = [feature for feature in features if feature != column_to_impute]
-
-
-    # Check if all required columns exist in the dataframe
-    missing_columns = [col for col in features if col not in train_data.columns]
-    if missing_columns:
-        raise ValueError(
-            f"Missing columns in the dataframe: {', '.join(missing_columns)}"
-        )
+    features = train_data.drop(columns=[column_to_impute] + excluded_columns).select_dtypes(include=["int64", "float64"]).columns.tolist()
 
     # Initialize KNNImputer
-    imputer = KNNImputer(n_neighbors=n_neighbors)
+    imputer = KNNImputer(n_neighbors=n_neighbors,weights='distance')
 
     # Prepare data for imputation
     train_for_imputation = train_data[features + [column_to_impute]].copy()
@@ -188,17 +173,13 @@ def impute_column_with_knn(
     train_missing_mask = train_data[column_to_impute].isna()
     test_missing_mask = test_data[column_to_impute].isna()
 
-    train_missing = train_for_imputation[train_missing_mask]
-    test_missing = test_for_imputation[test_missing_mask]
-
     # Perform imputation only on rows with missing target values
-    train_imputed = imputer.fit_transform(train_missing)
-    test_imputed = imputer.transform(test_missing)
+    train_for_imputation.loc[train_missing_mask, column_to_impute] = imputer.fit_transform(train_for_imputation[train_missing_mask])[..., -1]
+    test_for_imputation.loc[test_missing_mask, column_to_impute] = imputer.transform(test_for_imputation[test_missing_mask])[..., -1]
 
     # Update only the missing values in the original dataframes
-    train_data.loc[train_missing_mask, column_to_impute] = train_imputed[:, -1]
-    test_data.loc[test_missing_mask, column_to_impute] = test_imputed[:, -1]
-
+    train_data.loc[train_missing_mask, column_to_impute] = train_for_imputation.loc[train_missing_mask, column_to_impute]
+    test_data.loc[test_missing_mask, column_to_impute] = test_for_imputation.loc[test_missing_mask, column_to_impute]
 
     return train_data, test_data
 
@@ -308,52 +289,6 @@ def create_single_interaction(data: pd.DataFrame, col_encode, col_multiply):
 
     return data
 
-def impute_column_with_knn(
-    train_data,
-    test_data,
-    column_to_impute,
-    excluded_columns=[],
-    n_neighbors=5,
-):
-    """
-    Imputes missing values of a specified column using KNN.
-
-    Parameters:
-    - train_data: Training data DataFrame.
-    - test_data: Testing data DataFrame.
-    - column_to_impute: The column for which missing values need to be imputed.
-    - excluded_columns: List of columns to be excluded from the feature set for imputation.
-    - n_neighbors: Number of neighbors to use for KNN imputation.
-
-    Returns:
-    - Imputed train_data and test_data DataFrames.
-    """
-    # Features for prediction (excluding non-numeric columns and excluded columns)
-    columns_to_drop = get_common_features(train_data, test_data, "dropped")
-    # Features for prediction (excluding non-numeric columns and excluded columns)
-    features = (
-        train_data.drop(columns=excluded_columns + columns_to_drop)
-        .select_dtypes(include=["int64", "float64"])
-        .columns
-    )
-    features = [feature for feature in features if feature != column_to_impute]
-
-    imputer = KNNImputer(n_neighbors=n_neighbors)
-
-    # Prepare data for imputation
-    train_for_imputation = train_data[features].copy()
-    test_for_imputation = test_data[features].copy()
-
-    # Fit imputer on known train data and transform both train and test data
-    train_imputed = imputer.fit_transform(train_for_imputation)
-    test_imputed = imputer.transform(test_for_imputation)
-
-    # Update only the target column in the original dataframes with the imputed values
-    train_data[column_to_impute] = train_imputed[:, -1]  
-    test_data[column_to_impute] = test_imputed[:, -1]
-
-    return train_data, test_data
-
 def impute_missing_value(data, column, strategy="min"):
     """
     Impute missing values for a specified column using either min or mode.
@@ -374,6 +309,37 @@ def impute_missing_value(data, column, strategy="min"):
         raise ValueError(f"Invalid strategy: {strategy}. Choose 'min' or 'mode'.")
 
     data[column].fillna(fill_value, inplace=True)
+    return data
+
+def impute_missing_value_with_flag(data, column, strategy="min"):
+    """
+    Impute missing values for a specified column using either min or mode and add a flag indicating if the value was imputed.
+
+    Parameters:
+    - data: DataFrame to impute.
+    - column: The column name for which missing values should be imputed.
+    - strategy: Either "min" or "mode".
+
+    Returns:
+    - DataFrame with imputed values for the specified column and an additional flag column.
+    """
+    
+    # Create flag column initialized with 0
+    data[column + '_imputed_flag'] = 0
+    
+    if strategy == "min":
+        fill_value = data[column].min()
+    elif strategy == "mode":
+        fill_value = data[column].mode()[0]
+    else:
+        raise ValueError(f"Invalid strategy: {strategy}. Choose 'min' or 'mode'.")
+    
+    # Set flag for rows with missing values
+    data.loc[data[column].isna(), column + '_imputed_flag'] = 1
+    
+    # Impute missing values
+    data[column].fillna(fill_value, inplace=True)
+    
     return data
 
 
@@ -832,7 +798,7 @@ def flexible_add(data, input1, input2):
 
 
 def set_value_by_group(
-    data, target_column, group_columns, strategy="mean", second_data=None
+    data, target_column, group_columns, strategy="mean", second_data=None, num_value=None
 ):
     """
     Modify a target column in the primary and optional second DataFrame based on aggregation
@@ -842,21 +808,33 @@ def set_value_by_group(
     - data: The primary DataFrame to modify.
     - target_column: The column to modify.
     - group_columns: The columns by which to group.
-    - strategy: The aggregation strategy; can be 'mean', 'mode', 'min', or 'max'.
+    - strategy: The aggregation strategy; can be 'mean', 'mode', 'min', 'max', or 'num'.
     - second_data: An optional second DataFrame to modify based on the aggregation.
+    - num_value: Integer value to set for NaNs if strategy='num'.
 
     Returns:
     - Tuple of Modified primary DataFrame and optionally the modified second DataFrame.
     """
 
-    # Aggregate the data
-    mapping_df = aggregate_by_group(
-        data, target_column, strategy, group_columns, second_data
-    )
-    mapping = mapping_df.set_index(group_columns)[target_column].to_dict()
+    if strategy == "num":
+        if num_value is None:
+            raise ValueError("For strategy='num', you must provide a value for num_value.")
+    else:
+        # Assuming aggregate_by_group function is defined elsewhere
+        mapping_df = aggregate_by_group(
+            data, target_column, strategy, group_columns, second_data
+        )
+        mapping = mapping_df.set_index(group_columns)[target_column].to_dict()
 
     # Define the function to apply to each row
     def modify_row(row):
+        # If the value in target_column is not NaN, return it as is
+        if pd.notna(row[target_column]):
+            return row[target_column]
+        
+        if strategy == "num":
+            return num_value
+
         key = tuple(row[col] for col in group_columns)
         return mapping.get(key, row[target_column])
 
@@ -869,3 +847,158 @@ def set_value_by_group(
         return data, second_data
 
     return (data,)
+
+def find_collinear_pairs(data, threshold=0.9):
+    """
+    Identify and print pairs of variables that are collinear based on correlation coefficient.
+
+    Parameters:
+    - data: DataFrame
+    - threshold: Absolute correlation threshold for filtering features. Default is 0.9.
+
+    Returns:
+    - List of tuples containing pairs of collinear variables.
+    """
+    # Compute the correlation matrix
+    corr_matrix = data.corr(numeric_only=True)
+    
+    # Find pairs with correlation coefficient above threshold
+    collinear_pairs = []
+    print("Variable 1".ljust(30), "Variable 2".ljust(30), "Correlation")
+    print("-" * 75)
+    for i in range(len(corr_matrix.columns)):
+        for j in range(i):
+            correlation = corr_matrix.iloc[i, j]
+            if abs(correlation) > threshold:
+                pair = (corr_matrix.columns[i], corr_matrix.columns[j])
+                collinear_pairs.append(pair)
+                print(f"{pair[0].ljust(50)} {pair[1].ljust(50)} {correlation:.4f}")
+    
+    return collinear_pairs
+
+def print_correlation_of_pairs_with_target(data, collinear_features, target_column):
+    """
+    Print the correlation of the collinear variables with the target in a formatted table, sorted by correlation.
+
+    Parameters:
+    - data: DataFrame
+    - collinear_features: List of tuples containing pairs of collinear variables.
+    - target_column: Name of the target column.
+    """
+    # Extract unique variables from the pairs
+    unique_collinear_vars = set([var for pair in collinear_features for var in pair])
+    
+    # Compute correlation with target
+    correlations = {}
+    for var in unique_collinear_vars:
+        correlations[var] = data[var].corr(data[target_column])
+    
+    # Sort by absolute correlation value
+    sorted_correlations = sorted(correlations.items(), key=lambda x: abs(x[1]), reverse=True)
+    
+    # Print out the correlations in a formatted table
+    print("Variable".ljust(50), "Correlation with Target")
+    print("-" * 50)
+    for var, corr in sorted_correlations:
+        print(f"{var.ljust(50)} {corr:.4f}")
+
+def feature_target_correlation(data, target_column):
+    """
+    Compute and return the correlation of all features with the target in a DataFrame.
+
+    Parameters:
+    - data: DataFrame
+    - target_column: Name of the target column.
+
+    Returns:
+    - DataFrame with features and their correlation with the target.
+    """
+    # Compute correlation with target for all columns
+    correlations = data.corrwith(data[target_column]).drop(target_column)
+    
+    # Convert to DataFrame and sort by absolute correlation value
+    correlation_df = correlations.reset_index().rename(columns={'index': 'Feature', 0: 'Correlation'})
+    correlation_df['Abs_Correlation'] = correlation_df['Correlation'].abs()
+    correlation_df = correlation_df.sort_values(by='Abs_Correlation', ascending=False).drop(columns=['Abs_Correlation'])
+    
+    return correlation_df
+
+def print_feature_target_correlation(data, target_column):
+    """
+    Compute and print the correlation of all features with the target in a formatted table.
+
+    Parameters:
+    - data: DataFrame
+    - target_column: Name of the target column.
+    """
+    # Compute correlation with target for all columns
+    correlations = data.corrwith(data[target_column]).drop(target_column)
+    
+    # Convert to DataFrame and sort by absolute correlation value
+    correlation_df = correlations.reset_index().rename(columns={'index': 'Feature', 0: 'Correlation'})
+    correlation_df['Abs_Correlation'] = correlation_df['Correlation'].abs()
+    sorted_correlation_df = correlation_df.sort_values(by='Abs_Correlation', ascending=False).drop(columns=['Abs_Correlation'])
+    
+    # Print out the correlations in a formatted table
+    print("Feature".ljust(50), "Correlation with Target")
+    print("-" * 50)
+    for index, row in sorted_correlation_df.iterrows():
+        print(f"{row['Feature'].ljust(50)} {row['Correlation']:.4f}")
+
+def aggregate_by_group_v2(
+    data, target_column, strategy="mean", fill_strategy="difference", group_columns=[], 
+    second_data=None, output_column_name=None
+):
+    """
+    Aggregate a target column based on the provided strategy and grouping columns.
+    Then compute the difference (or other metric) between each individual value and the aggregated value.
+
+    Parameters:
+    - data: The primary DataFrame to process.
+    - target_column: The column to aggregate.
+    - strategy: The aggregation strategy; can be 'mean', 'mode', 'min', or 'max'.
+    - fill_strategy: The strategy to fill the difference; can be 'difference' or others as needed.
+    - group_columns: The columns by which to group.
+    - second_data: An optional second DataFrame to consider for the aggregation.
+    - output_column_name: The name of the output column. If not provided, it defaults to "{target_column}_diff_from_{strategy}".
+
+    Returns:
+    - The primary DataFrame (and optionally the secondary DataFrame) with the difference between the individual and aggregated data.
+    """
+
+    # Determine the output column name
+    if output_column_name is None:
+        output_column_name = f"{target_column}_diff_from_{strategy}"
+    
+    # Aggregate the data based on the provided strategy
+    if strategy == "mean":
+        aggregated_data = data.groupby(group_columns)[target_column].transform('mean')
+    elif strategy == "mode":
+        aggregated_data = data.groupby(group_columns)[target_column].transform(lambda x: x.mode().iloc[0])
+    elif strategy == "min":
+        aggregated_data = data.groupby(group_columns)[target_column].transform('min')
+    elif strategy == "max":
+        aggregated_data = data.groupby(group_columns)[target_column].transform('max')
+    else:
+        raise ValueError(
+            f"Invalid strategy: {strategy}. Choose from 'mean', 'mode', 'min', or 'max'."
+        )
+
+    # Determine the fill based on the provided fill_strategy
+    if fill_strategy == "difference":
+        data[output_column_name] = data[target_column] - aggregated_data
+    # Further fill strategies can be added as needed
+    else:
+        raise ValueError(f"Invalid fill_strategy: {fill_strategy}. Currently only supports 'difference'.")
+
+    # If second_data is provided, calculate the differences for it as well
+    if second_data is not None:
+        # Map aggregated values to the second dataset
+        mapping = data.groupby(group_columns)[output_column_name].mean()
+        second_data[output_column_name] = second_data.merge(
+            mapping, on=group_columns, how='left'
+        )[output_column_name]
+        
+        return data, second_data
+    else:
+        return data

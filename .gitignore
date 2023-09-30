@@ -9,3 +9,4 @@ xgboost.csv
 catboost_info/*
 copyparty-sfx.py
 __pycache__
+report.html

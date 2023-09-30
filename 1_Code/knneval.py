@@ -18,15 +18,19 @@ neighbors_range = list(range(1, 51))  # check from 1 to 50 neighbors
 cross_val_scores = []
 
 for n in neighbors_range:
-    knn_model = KNeighborsClassifier(n_neighbors=n)
+    knn_model = KNeighborsClassifier(n_neighbors=n,weights='distance')
     scores = cross_val_score(knn_model, X_train, y_train, cv=5)
     cross_val_scores.append(scores.mean())
 
 best_neighbors = neighbors_range[np.argmax(cross_val_scores)]
 print(f"Best number of neighbors: {best_neighbors}")
+# print(f"Best AUC ROC            : {neighbors_range[np.argmax(cross_val_score)]}")
+
+print(neighbors_range)
+
 
 # Creating the KNN model with the best number of neighbors
-knn_model = KNeighborsClassifier(n_neighbors=best_neighbors)
+knn_model = KNeighborsClassifier(n_neighbors=best_neighbors,weights='distance')
 
 # Fitting the KNN model to the training data
 knn_model.fit(X_train, y_train)
