@@ -86,7 +86,7 @@ def process_data(data: pd.DataFrame):
     data["Age"] = data.apply(f.calculate_exact_age, axis=1)
 
     # data = f.create_single_interaction(data,'Status','Age')
-    # data = f.create_single_interaction(data,'Status','Age')
+    data = f.create_single_interaction(data,'Status','Age')
     
 
     # 5. Age Groups
@@ -136,6 +136,7 @@ def process_data(data: pd.DataFrame):
     data["unemployed"] = data["Status"].apply(
         lambda x: -1 if x == "unemployed" else 1
     )
+    data["studying_other"] = data.apply(lambda row: 1 if row["Status"] in ["studying","other","self employed"] else 0,axis=1)
     # data["Tenure"] = data.apply(
     #     lambda row: 0 if row["Status"] == "studying" else row["Tenure"], axis=1
     # )
@@ -197,7 +198,8 @@ mean_math_schoolquintile = f.aggregate_by_group(data=train_data,second_data=test
 train_proc,test_proc = f.aggregate_by_group_v2(data=train_proc,target_column='Maths_combined',group_columns=['Province','Schoolquintile','Geography'],fill_strategy='difference',second_data=test_proc,strategy="mean")
 train_proc,test_proc = f.aggregate_by_group_v2(data=train_proc,target_column='Age',group_columns=['Status','Schoolquintile'],fill_strategy='difference',second_data=test_proc,strategy="mean")
 
-# train_data,test_data = f.impute_column_with_knn(train_data=train_data,test_data=test_data,column_to_impute='Tenure',excluded_columns=['Target'],n_neighbors=10)
+# train_proc,test_proc = f.impute_column_with_knn_v2(train_data=train_proc,test_data=test_proc,column_to_impute='Tenure',excluded_columns=['Target'],n_neighbors=10)
+# train_proc["imputed_Tenure"] = train_proc.apply(lambda row: -0.1 if row["studying_other"] == 1  else row["imputed_Tenure"],axis=1)
 # train_proc,test_proc = f.set_value_by_group(train_data,'Tenure',strategy='mean',group_columns=['Birthyear','Province','Geography'],second_data=test_data)
 # train_proc,test_proc = f.set_value_by_group(train_data,'Matric',strategy='num',group_columns=[],num_value=-1,second_data=test_data)
 # train_proc,test_proc = f.set_value_by_group(train_data,'Degree',strategy='num',group_columns=[],num_value=-1,second_data=test_data)
@@ -231,38 +233,38 @@ f.print_dataframe_info(train_proc)
 # train_proc["Round"] = train_proc["Round"].map(mean_target_by_round)
 # test_proc["Round"] = test_proc["Round"].map(mean_target_by_round)
 # Handling Missing Values
-# numerical_columns = train_proc.select_dtypes(
-#     include=["int64", "float64"]
-# ).columns.tolist()
-# categorical_columns = train_proc.select_dtypes(include=["object"]).columns.tolist()
-# numerical_columns.remove("Target")
-# categorical_columns.remove("Person_id")
+numerical_columns = train_proc.select_dtypes(
+    include=["int64", "float64"]
+).columns.tolist()
+categorical_columns = train_proc.select_dtypes(include=["object"]).columns.tolist()
+numerical_columns.remove("Target")
+categorical_columns.remove("Person_id")
 
-# # For numerical columns, fill missing values with the minimum
-# for col in numerical_columns:
-#     min_value = train_proc[col].min()
-#     train_proc[col].fillna(min_value, inplace=True)
-#     test_proc[col].fillna(min_value, inplace=True)
+# For numerical columns, fill missing values with the minimum
+for col in numerical_columns:
+    min_value = train_proc[col].min()
+    train_proc[col].fillna(min_value, inplace=True)
+    test_proc[col].fillna(min_value, inplace=True)
 
-# # For categorical columns, fill missing values with the mode
-# for col in categorical_columns:
-#     mode_value = train_proc[col].mode()[0]
-#     train_proc[col].fillna(mode_value, inplace=True)
-#     test_proc[col].fillna(mode_value, inplace=True)
+# For categorical columns, fill missing values with the mode
+for col in categorical_columns:
+    mode_value = train_proc[col].mode()[0]
+    train_proc[col].fillna(mode_value, inplace=True)
+    test_proc[col].fillna(mode_value, inplace=True)
 
 
-# # Feature selection
+# Feature selection
 # dropped_features = f.drop_features_using_elasticnet(
 #     train_proc.drop(columns=["Person_id"]), "Target"
 # )
 
-# # dropped_features = f.enhanced_feature_selection_drop(train_proc.drop(columns=['Person_id']),'Target',method='mutual_information',k_features=30)
+dropped_features = f.enhanced_feature_selection_drop(train_proc.drop(columns=['Person_id']),'Target',method='mutual_information',k_features=30)
 
-# # print(dropped_features)
+# print(dropped_features)
 
 # # Assuming you will do the same for the test set:
-# test_proc.drop(columns=dropped_features, inplace=True)
-# train_proc.drop(columns=dropped_features, inplace=True)
+test_proc.drop(columns=dropped_features, inplace=True)
+train_proc.drop(columns=dropped_features, inplace=True)
 
 
 pairs = f.find_collinear_pairs(train_proc, 0.9)
