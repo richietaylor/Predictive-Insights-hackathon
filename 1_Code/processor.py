@@ -60,6 +60,7 @@ def process_data(data: pd.DataFrame):
         "Geography": "Status",
         "Status": "Province",
         "Female":"Degree",
+        "Female": "Matric",
         # "Geography": "Schoolquintile",
         # "Province": "Schoolquintile",
         # "Status": "Schoolquintile",
