@@ -59,7 +59,7 @@ def process_data(data: pd.DataFrame):
         # "Province": "Geography",
         "Geography": "Status",
         "Status": "Province",
-        # "Female":"Status",
+        "Female":"Degree",
         # "Geography": "Schoolquintile",
         # "Province": "Schoolquintile",
         # "Status": "Schoolquintile",
@@ -81,7 +81,7 @@ def process_data(data: pd.DataFrame):
 
 
 
-    # data = f.create_interactions(data,interactions=interactions)
+    data = f.create_interactions(data,interactions=interactions)
     # Calculate age
     data["Age"] = data.apply(f.calculate_exact_age, axis=1)
 
@@ -271,7 +271,7 @@ pairs = f.find_collinear_pairs(train_proc, 0.9)
 
 
 f.print_correlation_of_pairs_with_target(collinear_features=pairs,data=train_proc,target_column='Target')
-f.print_feature_target_correlation(train_proc,'Target')
+# f.print_feature_target_correlation(train_proc,'Target')
 # multicolinear = f.drop_multicollinear_features(train_proc,'Target',100)
 
 # train_proc.drop(columns=multicolinear,inplace=True)

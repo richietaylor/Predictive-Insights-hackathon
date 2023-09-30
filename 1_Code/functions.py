@@ -23,7 +23,7 @@ from sklearn.feature_selection import (
 )
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.linear_model import LassoCV
-from mlxtend.feature_selection import SequentialFeatureSelector
+# from mlxtend.feature_selection import SequentialFeatureSelector
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 
