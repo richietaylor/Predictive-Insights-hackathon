@@ -10,23 +10,19 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier, ExtraTreesClassifier
 from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import train_test_split
-from scipy.stats import pearsonr
-import seaborn as sns
-import matplotlib.pyplot as plt
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from functions import evaluate_and_compare_models
 import time
-from lightgbm import LGBMClassifier
-from catboost import CatBoostClassifier
 import random
 from sklearn.neural_network import MLPClassifier
-from mlpclassifier import SklearnCompatibleMLP
-random.seed(4200)
+import numpy as np
+
+np.random.seed(420)
+random.seed(420)
 
 
 
 start_time = time.time()
-# Paths to your data
+
 train_data_path = (
     "processed_train.csv"
 )
@@ -61,7 +57,7 @@ base_learners = [
     # ('lda', LinearDiscriminantAnalysis(shrinkage=None, solver='svd')),
     ('naive_bayes', GaussianNB()),
     ('BernoulliNB', BernoulliNB()),
-    ('knn', KNeighborsClassifier(n_neighbors=4,weights='distance',n_jobs=-1)),
+    ('knn', KNeighborsClassifier(n_neighbors=21,weights='distance',n_jobs=-1)),
     # ('mlp',MLPClassifier(activation='relu',learning_rate='adaptive',hidden_layer_sizes=[147,50,50],verbose=True,max_iter=500,early_stopping=True)),
     ('ada_boost', AdaBoostClassifier(n_estimators=100, random_state=420,)),
     # ('random_forest', RandomForestClassifier(n_estimators=50, random_state=420, criterion='gini',n_jobs=-1)),
@@ -81,7 +77,7 @@ evaluate_and_compare_models(base_learners=base_learners,X=X,y=y,n_splits=5)
 
 # Initialize Stacking Classifier
 stack_clf = StackingClassifier(
-    estimators=base_learners, final_estimator=MLPClassifier(activation='relu',learning_rate='adaptive',hidden_layer_sizes=[200,100],verbose=True), cv=5,verbose=2,
+    estimators=base_learners, final_estimator=MLPClassifier(activation='relu',learning_rate='adaptive',hidden_layer_sizes=[200,100],verbose=True,random_state=420), cv=5,verbose=2,
 )
 
 # # Initialize Stacking Classifier

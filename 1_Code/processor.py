@@ -91,7 +91,7 @@ def process_data(data: pd.DataFrame):
     # data = f.create_interactions(data,interactions=interactions)
     # Calculate age
     data["Age"] = data.apply(f.calculate_exact_age, axis=1)
-    data = f.create_single_interaction(data,'Status','Age')
+    # data = f.create_single_interaction(data,'Status','Age')
     # data = f.create_single_interaction(data,'Status','Age')
 
     # 5. Age Groups
