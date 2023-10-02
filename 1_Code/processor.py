@@ -185,8 +185,8 @@ def process_data(data: pd.DataFrame):
 
 
 # Load the datasets
-train_data = pd.read_csv("TrainTest.csv")
-test_data = pd.read_csv("TestTest.csv")
+train_data = pd.read_csv("Train.csv")
+test_data = pd.read_csv("Test.csv")
 
 
 
