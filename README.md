@@ -24,6 +24,7 @@ Welcome to our Predictive Insights hackathon submission. We are proud to announc
  - Gareth Warbutron
  - Richard Taylor
  - Jeremy Simpson 
+ - Zuileigha Patel
 
 ### Objective
 
@@ -40,18 +41,21 @@ Welcome to our Predictive Insights hackathon submission. We are proud to announc
 
 To run our submission, do the following: 
 
-Install requirements:
+#### Install requirements:
 ```bash
     pip install -r requirements.txt
 ```
+#### To run:
 
-Followed by:
+ run  `run.py`
+
+#### Alternatively:
 ```bash
     python ./1_Code/processor.py
 ```
 This runs the data processor. And creates `processed_test.csv` and `processed_train.csv`
 
-Finally:
+And then run:
 ```bash
     python ./1_Code/stacking.py
 ```
