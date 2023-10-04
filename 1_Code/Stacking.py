@@ -13,14 +13,13 @@ import random
 from sklearn.neural_network import MLPClassifier
 import numpy as np
 
+start_time = time.time()
+
+#Setting Random Seeds
 np.random.seed(420)
 random.seed(420)
 
 DIR = get_path_variable()
-
-
-start_time = time.time()
-
 train_data_path = (
     DIR + "3_Data/processed_train.csv"
 )
@@ -30,6 +29,7 @@ test_data_path = DIR + "3_Data/processed_test.csv"
 train_data = pd.read_csv(train_data_path)
 test_data = pd.read_csv(test_data_path)
 
+#Getting common features
 common_features = list(set(train_data.columns) & set(test_data.columns))
 common_features.remove("Person_id")
 
@@ -40,7 +40,7 @@ y = train_data["Target"]
 strat_kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=420)
 
 # Define base learners
-base_learners = [
+base_learners = [ # This collection of base learners seemed to perform the best. Could experiment more...
     # ('extra_trees', ExtraTreesClassifier(n_estimators=150, random_state=420,criterion='log_loss',n_jobs=-1)),
     ('xgb', XGBClassifier(objective='binary:logitraw',
     n_estimators=200,
@@ -66,40 +66,18 @@ base_learners = [
 # Show model simmilarity and performances. Diverse weak learners > single good model
 evaluate_and_compare_models(base_learners=base_learners,X=X,y=y,n_splits=5)
 
-
-# mlp = SklearnCompatibleMLP(len(base_learners),200,1,100,0.001)
-
-
-# # Initialize Stacking Classifier
-# stack_clf = StackingClassifier(
-#     estimators=base_learners, final_estimator=mlp, cv=5,verbose=2,
-# )
-
-# Initialize Stacking Classifier
+# Initialize Stacking Classifier -- MLP performed best by far. Previously just a logistic regression.
+# Passthrough made model perform worse. Maybe needed more training time?
 stack_clf = StackingClassifier(
     estimators=base_learners, final_estimator=MLPClassifier(activation='relu',learning_rate='adaptive',hidden_layer_sizes=[200,100],verbose=True,random_state=420),verbose=2,
 )
 
-# # Initialize Stacking Classifier
-# stack_clf = StackingClassifier(
-#     estimators=base_learners, final_estimator=MLPClassifier(activation='relu',solver='adam',learning_rate='adaptive',verbose=True,hidden_layer_sizes=[200,100],max_iter=200,), cv=5,verbose=2,
-# )
-
-# # Initialize Stacking Classifier
-# stack_clf = VotingClassifier(
-#     estimators=base_learners,verbose=2,voting='soft',weights=[2,1,1,1]
-# )
-
-
 # Train the stacking classifier
 stack_clf.fit(X, y,)
 
-# # Retrieve the weights of the final estimator
-# weights = stack_clf.final_estimator_.coef_
 
-# print(weights)
-print("Predicting on the test set...")
 # Predict on the test data
+print("Predicting on the test set...")
 stacked_predictions = stack_clf.predict_proba(test_data[common_features])[:, 1]
 
 # Save predictions to a CSV file
@@ -112,7 +90,7 @@ predictions_df.to_csv(DIR + '4_Outputs/stacked.csv', index=False)
 print("Saved predictions to :" + (DIR + '4_Outputs/stacked.csv'))
 
 # # Calculate AUC-ROC using 5-fold cross-validation
-# roc_auc_scorer = make_scorer(roc_auc_score, needs_proba=True)# Define additional scoring metrics
+# roc_auc_scorer = make_scorer(roc_auc_score, needs_proba=True)
 # mean_auc_roc = cross_val_score(stack_clf, X, y, cv=strat_kfold, scoring=roc_auc_scorer,n_jobs=-1).mean()
 
 # print(f"Mean AUC-ROC Score: {mean_auc_roc:.4f}")
