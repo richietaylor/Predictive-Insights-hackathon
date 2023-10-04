@@ -51,20 +51,11 @@ def process_data(data: pd.DataFrame):
 
     data.drop(columns="Survey_date", inplace=True)
 
-    # data["Schoolquintile"] = data.apply(
-    #     lambda row: set_schoolquintile_by_province(
-    #         row, mean_school_quintile_by_province
-    #     ),
-    #     axis=1,
-    # )
-
-    # data = f.bin_column(data=data,column_name='Tenure',[])
-    
-
     interactions = {
-        # "Province": "Geography",
         "Geography": "Status",
         "Status": "Province",
+        # Other Attempted Interactions
+        # "Province": "Geography",
         # "Female":"Status",
         # "Geography": "Schoolquintile",
         # "Province": "Schoolquintile",
@@ -72,33 +63,18 @@ def process_data(data: pd.DataFrame):
         # "Diploma": "Tenure",
         # "Degree": "Province",
     }
-
-    # data = f.create_single_interaction(data,'Matric','Tenure')
-    # data = f.create_single_interaction(data,'Degree','Tenure')
-    # data = f.create_single_interaction(data,'Diploma','Tenure')
-
-    # data = f.create_single_interaction(data,'Province','Matric')
-
     data = f.create_single_interaction(data,'Status','Tenure')
-    # data = f.create_single_interaction(data,'Province','Age')
-    # data = f.create_single_interaction(data,'Geography','Age')
-    # data = f.create_single_interaction(data,'Status','Age')
 
-
-
-
-    # data = f.create_interactions(data,interactions=interactions)
     # Calculate age
     data["Age"] = data.apply(f.calculate_exact_age, axis=1)
-    # data = f.create_single_interaction(data,'Status','Age')
-    # data = f.create_single_interaction(data,'Status','Age')
 
-    # 5. Age Groups
+    # Classify age Groups
     data["is_young_adult"] = (data["Age"] >= 18) & (data["Age"] <= 25).astype(int)
     data["is_middle_aged"] = (data["Age"] > 25) & (data["Age"] <= 30).astype(int)
     data["is_senior"] = (data["Age"] > 30).astype(int)
     data["Age_first_employment"] = data["Age"] - data["Tenure"] / 365.25
     data["Age_first_employment"] = data.apply(lambda row: row["Age_first_employment"] if row["Age_first_employment"] > 18 else 0,axis=1)
+
 
     # Transform percentage range columns
     percentage_columns = ["Math", "Mathlit", "Additional_lang", "Home_lang", "Science"]
@@ -113,11 +89,10 @@ def process_data(data: pd.DataFrame):
     }
     data = f.transform_percentage_columns(data, percentage_columns, percentage_mapping)
 
+    # Impute and clean data, calling functions from functions.py
     data["Maths_combined"] = data.apply(impute_maths_combined, axis=1)
-    
     data["Mathadded"] = data["Math"] *2
     data["Maths_combined"] = f.flexible_add(data,'Mathlit','Mathadded')
-    
     data.drop(columns=['Mathadded'],inplace=True)
 
     data["Subjects_passed"] = data[percentage_columns].apply(
@@ -149,6 +124,7 @@ def process_data(data: pd.DataFrame):
         lambda x: sum((val >= 0) * 2 - pd.isna(val) for val in x), axis=1
     )
     # Increase exposure by 10 if they have a degree
+
     # Assuming the column is named 'Degree' and has a value 'Yes' for those with a degree
     data["Exposure"] = data.apply(
         lambda row: row["Exposure"] + 10
@@ -156,11 +132,12 @@ def process_data(data: pd.DataFrame):
         else row["Exposure"],
         axis=1,
     )
-    # 10. Total Achievements
+    # Total Achievements
     data["Total_achievements"] = data[
         ["Math", "Science", "Additional_lang", "Home_lang"]
     ].sum(axis=1)
 
+    #OneHot Encoding for "Status", "Geography", "Province"
     data = f.encode_categorical_columns(
         data, ["Status", "Geography", "Province"], encoding_type="onehot"
     )
@@ -179,7 +156,6 @@ def process_data(data: pd.DataFrame):
             row["Tenure"]**2*-1 if row["Status_mapped"] == -1 else row["Tenure"]**2),
         axis=1)
 
-    # data["Math_Science_interaction"] = data["Math"] * data["Science"]
     return data
 
 
@@ -189,12 +165,6 @@ train_data = pd.read_csv(DIR + "3_Data/Train.csv")
 test_data = pd.read_csv(DIR + "3_Data/Test.csv")
 
 
-
-# train_data, test_data = f.impute_column_with_model(train_data, test_data, "Tenure",excluded_columns=['Target'],n_neighbors=5)
-# train_data = f.impute_missing_value(data=train_data,column='Tenure',strategy='mode')
-# test_data = f.impute_missing_value(data=test_data,column='Tenure',strategy='mode')
-
-# train_data,test_data = f.impute_column_with_knn(train_data=train_data,test_data=test_data,column_to_impute='Tenure',excluded_columns=['Target'],n_neighbors=5)
 mean_tenure_by_status_province = f.aggregate_by_group(train_data,target_column='Tenure',strategy='mean',group_columns=['Status'],second_data=test_data)
 f.print_dataframe_info(mean_tenure_by_status_province)
 print(mean_tenure_by_status_province)
@@ -205,27 +175,12 @@ print(mean_school_quintile_by_province)
 
 train_data,test_data = f.set_value_by_group(train_data,'Schoolquintile',strategy='mode',group_columns=['Province','Geography'],second_data=test_data)
 
-# data = f.create_and_select_interactions(train_data,'Target',[('Status','Geography')])
-
-#TODO: Fix function
-# train_data = f.create_and_select_interactions(train_data,'Target',[('Status','Province')],alpha=0.001)
-
 # Process the data
 train_proc = process_data(train_data)
 test_proc = process_data(test_data)
 
-
-
-# train_proc = f.apply_feature_hashing(train_proc,'Tenure',8)
-
-# mean_target_by_round = f.aggregate_by_group(data=train_data,target_column='Round',group_columns=['Target'],strategy='mode')
-
-# print(mean_target_by_round)
-
 f.print_dataframe_info(train_proc)
 
-# train_proc["Round"] = train_proc["Round"].map(mean_target_by_round)
-# test_proc["Round"] = test_proc["Round"].map(mean_target_by_round)
 # Handling Missing Values
 numerical_columns = train_proc.select_dtypes(
     include=["int64", "float64"]
@@ -252,19 +207,6 @@ dropped_features = f.drop_features_using_elasticnet(
     train_proc.drop(columns=["Person_id"]), "Target"
 )
 
-# dropped_features = f.enhanced_feature_selection_drop(train_proc.drop(columns=['Person_id']),'Target',method='variance_threshold',k_features=30)
-
-# print(dropped_features)
-
-# # Assuming you will do the same for the test set:
-# test_proc.drop(columns=dropped_features, inplace=True)
-# train_proc.drop(columns=dropped_features, inplace=True)
-
-# train_norm, test_norm = f.normalize_data(X_train=train_proc,X_val=test_proc,target_column='Target')
-
-# # print(f.compute_vif(train_proc, "Target"))
-
-# # f.print_dataframe_info()
-
+# Output processed data
 f.save_to_csv(train_proc, DIR + "3_Data/processed_train.csv")
 f.save_to_csv(test_proc, DIR + "3_Data/processed_test.csv")
