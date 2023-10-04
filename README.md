@@ -2,7 +2,9 @@
 
 ***
 
-Hi! :smile: Welcome to our Predictive Insights hackathon submission. We are proud to announce this submission as the ==winning submission== on [Zindi](https://zindi.africa/competitions/predictive-insights-youth-income-prediction-challenge).
+Hi! :smile: 
+
+Welcome to our Predictive Insights hackathon submission. We are proud to announce this submission as the :boom: **winning submission** :boom: on [Zindi](https://zindi.africa/competitions/predictive-insights-youth-income-prediction-challenge).
 
 ![Team Photo](teamphoto.jpeg)
 
@@ -23,7 +25,9 @@ Hi! :smile: Welcome to our Predictive Insights hackathon submission. We are prou
  - Richard Taylor
  - Jeremy Simpson 
 
-The objective of this challenge is to build a machine learning model that predicts youth employment, based on data from labour market surveys in South Africa. Youth unemployment and under-employment is a major concern for any developing country, and serves as an important predictor of economic health and prosperity. Being able to predict, and understand, which young people will find employment and which ones will require additional help, helps promote evidence-based decision-making, supports economic empowerment, and allows young people to thrive in their chosen careers.
+### Objective
+
+*To build a machine learning model that predicts youth employment, based on data from labour market surveys in South Africa. Youth unemployment and under-employment is a major concern for any developing country, and serves as an important predictor of economic health and prosperity. Being able to predict, and understand, which young people will find employment and which ones will require additional help, helps promote evidence-based decision-making, supports economic empowerment, and allows young people to thrive in their chosen careers.*
 
 ### File structure:
 
@@ -94,34 +98,12 @@ In order to assess the model, we use the following cross-validation techniques.
 Table with cross-validation scores of different models
 Brief discussion of these results
 
-Model
-Key Features
-ROC-AUC
 
-
-1
-
-
-
-
-
-
-2
-
-
-
-
-
-
-3
-
-
-
-
-
-
-
-
+| Model | Key Features | ROC-AUC |
+|---------|---------|---------|
+|  | | |
+| | | |
+| | | |
 
 Key insights about the best models
 Finish off discussion
