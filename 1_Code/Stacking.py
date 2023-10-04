@@ -7,7 +7,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.model_selection import StratifiedKFold
-from functions import evaluate_and_compare_models
+from functions import evaluate_and_compare_models, get_path_variable
 import time
 import random
 from sklearn.neural_network import MLPClassifier
@@ -16,14 +16,15 @@ import numpy as np
 np.random.seed(420)
 random.seed(420)
 
+DIR = get_path_variable()
 
 
 start_time = time.time()
 
 train_data_path = (
-    "processed_train.csv"
+    DIR + "3_Data/processed_train.csv"
 )
-test_data_path = "processed_test.csv"
+test_data_path = DIR + "3_Data/processed_test.csv"
 
 # Loading the data
 train_data = pd.read_csv(train_data_path)
@@ -61,7 +62,9 @@ base_learners = [
 
 ]
 
-# evaluate_and_compare_models(base_learners=base_learners,X=X,y=y,n_splits=5)
+
+# Show model simmilarity and performances. Diverse weak learners > single good model
+evaluate_and_compare_models(base_learners=base_learners,X=X,y=y,n_splits=5)
 
 
 # mlp = SklearnCompatibleMLP(len(base_learners),200,1,100,0.001)
@@ -105,8 +108,8 @@ predictions_df = pd.DataFrame({
     'Probability_Unemployed': stacked_predictions
 })
 print("Done!")
-predictions_df.to_csv('stacked.csv', index=False)
-print("Saved!")
+predictions_df.to_csv(DIR + '4_Outputs/stacked.csv', index=False)
+print("Saved predictions to :" + (DIR + '4_Outputs/stacked.csv'))
 
 # # Calculate AUC-ROC using 5-fold cross-validation
 # roc_auc_scorer = make_scorer(roc_auc_score, needs_proba=True)# Define additional scoring metrics

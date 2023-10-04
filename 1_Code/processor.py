@@ -183,9 +183,10 @@ def process_data(data: pd.DataFrame):
     return data
 
 
+DIR = f.get_path_variable()
 # Load the datasets
-train_data = pd.read_csv("Train.csv")
-test_data = pd.read_csv("Test.csv")
+train_data = pd.read_csv(DIR + "3_Data/Train.csv")
+test_data = pd.read_csv(DIR + "3_Data/Test.csv")
 
 
 
@@ -265,5 +266,5 @@ dropped_features = f.drop_features_using_elasticnet(
 
 # # f.print_dataframe_info()
 
-f.save_to_csv(train_proc, "processed_train.csv")
-f.save_to_csv(test_proc, "processed_test.csv")
+f.save_to_csv(train_proc, DIR + "3_Data/processed_train.csv")
+f.save_to_csv(test_proc, DIR + "3_Data/processed_test.csv")
