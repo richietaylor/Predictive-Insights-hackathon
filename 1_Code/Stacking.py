@@ -1,15 +1,12 @@
 import pandas as pd
-from sklearn.ensemble import StackingClassifier, VotingClassifier
+from sklearn.ensemble import StackingClassifier
 from sklearn.naive_bayes import GaussianNB, BernoulliNB
 from xgboost import XGBClassifier
 from sklearn.metrics import roc_auc_score, make_scorer
 from sklearn.model_selection import cross_val_score
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier, ExtraTreesClassifier
+from sklearn.ensemble import AdaBoostClassifier
 from sklearn.model_selection import StratifiedKFold
-from sklearn.model_selection import train_test_split
 from functions import evaluate_and_compare_models
 import time
 import random
@@ -64,7 +61,7 @@ base_learners = [
 
 ]
 
-evaluate_and_compare_models(base_learners=base_learners,X=X,y=y,n_splits=5)
+# evaluate_and_compare_models(base_learners=base_learners,X=X,y=y,n_splits=5)
 
 
 # mlp = SklearnCompatibleMLP(len(base_learners),200,1,100,0.001)
@@ -77,7 +74,7 @@ evaluate_and_compare_models(base_learners=base_learners,X=X,y=y,n_splits=5)
 
 # Initialize Stacking Classifier
 stack_clf = StackingClassifier(
-    estimators=base_learners, final_estimator=MLPClassifier(activation='relu',learning_rate='adaptive',hidden_layer_sizes=[200,100],verbose=True,random_state=420), cv=5,verbose=2,
+    estimators=base_learners, final_estimator=MLPClassifier(activation='relu',learning_rate='adaptive',hidden_layer_sizes=[200,100],verbose=True,random_state=420),verbose=2,
 )
 
 # # Initialize Stacking Classifier
@@ -98,7 +95,7 @@ stack_clf.fit(X, y,)
 # weights = stack_clf.final_estimator_.coef_
 
 # print(weights)
-
+print("Predicting on the test set...")
 # Predict on the test data
 stacked_predictions = stack_clf.predict_proba(test_data[common_features])[:, 1]
 
@@ -107,13 +104,15 @@ predictions_df = pd.DataFrame({
     'Person_id': test_data['Person_id'],
     'Probability_Unemployed': stacked_predictions
 })
+print("Done!")
 predictions_df.to_csv('stacked.csv', index=False)
+print("Saved!")
 
-# Calculate AUC-ROC using 5-fold cross-validation
-roc_auc_scorer = make_scorer(roc_auc_score, needs_proba=True)# Define additional scoring metrics
-mean_auc_roc = cross_val_score(stack_clf, X, y, cv=strat_kfold, scoring=roc_auc_scorer,n_jobs=-1).mean()
+# # Calculate AUC-ROC using 5-fold cross-validation
+# roc_auc_scorer = make_scorer(roc_auc_score, needs_proba=True)# Define additional scoring metrics
+# mean_auc_roc = cross_val_score(stack_clf, X, y, cv=strat_kfold, scoring=roc_auc_scorer,n_jobs=-1).mean()
 
-print(f"Mean AUC-ROC Score: {mean_auc_roc:.4f}")
+# print(f"Mean AUC-ROC Score: {mean_auc_roc:.4f}")
 
 end_time = time.time()
 elapsed_time = end_time - start_time

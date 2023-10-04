@@ -4,7 +4,6 @@ from sklearn.feature_extraction import FeatureHasher
 from sklearn.metrics import mean_squared_error, roc_auc_score
 from sklearn.preprocessing import LabelEncoder, OrdinalEncoder, PolynomialFeatures
 import pandas as pd
-import xgboost
 from sklearn.linear_model import (
     ElasticNetCV,
 )
@@ -23,7 +22,6 @@ from sklearn.feature_selection import (
 )
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.linear_model import LassoCV
-from mlxtend.feature_selection import SequentialFeatureSelector
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 
