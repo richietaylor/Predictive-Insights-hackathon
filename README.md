@@ -8,6 +8,7 @@ Welcome to our Predictive Insights hackathon submission. We are proud to announc
 
 ![Team Photo](teamphoto.jpeg)
 
+
 ### Contents:
 
   1. Overview
@@ -17,7 +18,8 @@ Welcome to our Predictive Insights hackathon submission. We are proud to announc
     a. Introduction
     b. Descriptive Analysis & Data Cleaning
     c. ect...
-    
+
+***  
 
 ### Team Not_Ols:
 
@@ -73,7 +75,6 @@ South Africa’s labour market is characterised by high unemployment. In particu
 
 ### Descriptive Analysis & Data Cleaning
 
-Data Cleaning & 
 The data we utilise has a pooled cross-sectional structure including different socio-economic outcomes in a specific round of the survey. It includes the current employment status and various information about geography and education. The data is split up into test and training data – where the training data has our target variable (an unemployment dummy for 6 months’ time). For the purposes of this section, we explore relationships between the target variable and other variables using the training data set.
 Table 1 summarises how we cleaned a number of the variables. Table 2 reflects the data transformations we made. A number of binary independent variables were also used in order to capture qualitative aspects of the data. Finally, Table 3 presents the interactions we used in our analysis. The interactions x, y and z were motivated by the heterogeneity of the labour market in different locations around South Africa. The interactions between gender were motivated by the existence of gender barriers in the South African labour market. Finally, the interactions between age and tenure were useful because they took into account any non-linearities that there might be between these variables and the probability of unemployment.
 Descriptive
