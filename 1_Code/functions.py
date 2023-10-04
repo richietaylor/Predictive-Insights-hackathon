@@ -23,6 +23,7 @@ from sklearn.feature_selection import (
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.linear_model import LassoCV
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+import os
 
 
 def get_common_features(train_data, test_data, mode="common", target_column=None):
@@ -60,7 +61,6 @@ def get_common_features(train_data, test_data, mode="common", target_column=None
     else:
         raise ValueError("Invalid mode. Choose either 'common' or 'dropped'.")
 
-
 def encode_categorical_columns(data, categorical_columns, encoding_type="label"):
     """
     Encodes categorical columns.
@@ -86,12 +86,10 @@ def encode_categorical_columns(data, categorical_columns, encoding_type="label")
 
     return data
 
-
 def calculate_exact_age(row):
     age = row["Survey_year"] - row["Birthyear"]
     age += (row["Survey_month"] - row["Birthmonth"]) / 12
     return age
-
 
 def transform_percentage_columns(data, percentage_columns, percentage_mapping):
     """
@@ -108,7 +106,6 @@ def transform_percentage_columns(data, percentage_columns, percentage_mapping):
         data[column] = data[column].map(percentage_mapping)
     return data
 
-
 def impute_maths_combined(row):
     if row["Math"] >= 3:
         return 2
@@ -117,12 +114,10 @@ def impute_maths_combined(row):
     else:
         return 0
 
-
 def set_education_quality(row):
     if row["Matric"] == 1:
         return 1 if row["Schoolquintile"] >= 4 else 0
     return row.get("education_quality", 0)
-
 
 def bin_column(data, column_name, bins, labels):
     """
@@ -239,7 +234,6 @@ def aggregate_by_group(
             f"Invalid strategy: {strategy}. Choose from 'mean', 'mode', 'min', or 'max'."
         )
 
-
 def create_interactions(data, interactions):
     """
     Creates interaction terms between two columns.
@@ -271,7 +265,6 @@ def create_interactions(data, interactions):
                 )
 
     return data
-
 
 def create_single_interaction(data: pd.DataFrame, col_encode, col_multiply):
     """
@@ -374,7 +367,6 @@ def impute_missing_value(data, column, strategy="min"):
     data[column].fillna(fill_value, inplace=True)
     return data
 
-
 def normalize_data(X_train, X_val=None, target_column=None):
     """
     Normalize features using StandardScaler.
@@ -405,7 +397,6 @@ def normalize_data(X_train, X_val=None, target_column=None):
 
     return X_train
 
-
 def save_to_csv(data, filename):
     """
     Save DataFrame to CSV.
@@ -415,7 +406,6 @@ def save_to_csv(data, filename):
     - filename: The name of the CSV file.
     """
     data.to_csv(filename, index=False)
-
 
 def drop_features_using_elasticnet(df, target_column):
     # 1. Split the data into training and test sets.
@@ -451,7 +441,6 @@ def drop_features_using_elasticnet(df, target_column):
     print("MSE for Elastic Net:", mse_en, features_to_drop)
 
     return features_to_drop
-
 
 def compute_vif(data, target_column, threshold=10.0, show=True):
     """
@@ -492,7 +481,6 @@ def compute_vif(data, target_column, threshold=10.0, show=True):
 
     return high_vif_features
 
-
 def drop_multicollinear_features(data, target_column, threshold=10.0):
     """
     Drop multicollinear features based on VIF.
@@ -517,7 +505,6 @@ def drop_multicollinear_features(data, target_column, threshold=10.0):
         data = data.drop(columns=[drop_feature])
 
     return features_to_drop
-
 
 def print_dataframe_info(df):
     """
@@ -563,7 +550,6 @@ def print_dataframe_info(df):
     # Display basic statistics
     print("Basic Statistics:")
     print(df.describe())
-
 
 def enhanced_feature_selection_drop(
     df,
@@ -647,7 +633,6 @@ def enhanced_feature_selection_drop(
 
     return []
 
-
 def evaluate_and_compare_models(base_learners, X, y, n_splits=5):
     from sklearn.model_selection import StratifiedKFold
 
@@ -700,7 +685,6 @@ def evaluate_and_compare_models(base_learners, X, y, n_splits=5):
     df_performance = pd.DataFrame(performance_metrics)
     print("\nModel Performance Metrics (averaged over k-folds):")
     print(df_performance.groupby("Model").mean())
-
 
 def create_and_select_interactions(
     data, target, interaction_pairs, degree=2, alpha=0.05
@@ -774,7 +758,6 @@ def create_and_select_interactions(
 
     return data
 
-
 def apply_feature_hashing(data, column, n_features=8):
     """
     Applies feature hashing to a specified column.
@@ -797,7 +780,6 @@ def apply_feature_hashing(data, column, n_features=8):
     data = pd.concat([data, hashed_df], axis=1).drop(column, axis=1)
 
     return data
-
 
 def flexible_add(data, input1, input2):
     """
@@ -827,7 +809,6 @@ def flexible_add(data, input1, input2):
     combined = val1 + val2
 
     return combined
-
 
 def set_value_by_group(
     data, target_column, group_columns, strategy="mean", second_data=None
@@ -867,3 +848,15 @@ def set_value_by_group(
         return data, second_data
 
     return (data,)
+
+def get_path_variable():
+    # Get the current working directory
+    current_dir = os.getcwd()
+
+    # Check if the current working directory is the 1_Code directory or its parent directory
+    if os.path.basename(current_dir) == "1_Code":
+        # If in the 1_Code directory, return "../"
+        return "../"
+    else:
+        # If in the parent directory or elsewhere, return ""
+        return ""
