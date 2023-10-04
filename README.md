@@ -4,7 +4,7 @@
 
 Hi! Welcome to our Predictive Insights hackathon submission. 
 
-![Team Photo](./2_Docs/teamphoto.jpeg)
+![Team Photo](teamphoto.jpeg)
 
  - [Index](#Usage:)
 
