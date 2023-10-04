@@ -1,11 +1,2 @@
 venv
-catboost.csv
-lightgbm.csv
-merge.csv
-processed_test.csv
-processed_train.csv
-randomForest5.csv
-xgboost.csv
-catboost_info/*
-copyparty-sfx.py
 __pycache__
